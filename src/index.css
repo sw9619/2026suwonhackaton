@@ -940,6 +940,33 @@ body {
   padding: 6px 0;
 }
 
+.appt-accept-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 0;
+}
+
+.appt-accept-count {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #262626;
+  background: #F0F0F0;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.btn-accept-status {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #262626;
+  background: #F0F0F0;
+  padding: 5px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 /* 채팅방 헤더 버튼 */
 .btn-appt-header {
   background: #FAFAFA;
@@ -1951,6 +1978,8 @@ body {
 .dark .btn-verified-header { color: #A8A8A8; }
 
 /* 약속 카드 */
+.dark .appt-accept-count { background: #262626; color: #fff; }
+.dark .btn-accept-status { background: #262626; color: #fff; }
 .dark .appt-card { background: #1A1A1A; border-color: #363636; }
 .dark .appt-card-title { color: #fff; }
 .dark .appt-card-row { color: #A8A8A8; }

@@ -12,7 +12,7 @@ export interface ChatMessage {
 export interface Appointment {
   place: string
   datetimeISO: string
-  accepted: boolean
+  acceptedBy: string[]  // 수락한 멤버 닉네임 목록
   verified: boolean
 }
 
@@ -54,7 +54,7 @@ function timeUntilText(iso: string) {
 }
 
 function canRate(appt?: Appointment) {
-  if (!appt || !appt.accepted) return false
+  if (!appt || appt.acceptedBy.length === 0) return false
   return Date.now() - new Date(appt.datetimeISO).getTime() >= 4 * 60 * 60 * 1000
 }
 
@@ -162,7 +162,7 @@ function RatingModal({ members, ratings, appt, onRate, onClose }: {
 }) {
   const [local, setLocal] = useState<Record<string, number>>(ratings)
   const ratable = canRate(appt)
-  const hoursLeft = appt?.accepted
+  const hoursLeft = appt && appt.acceptedBy.length > 0
     ? Math.max(0, Math.ceil((new Date(appt.datetimeISO).getTime() + 4 * 3600000 - Date.now()) / 3600000))
     : null
 
@@ -180,7 +180,7 @@ function RatingModal({ members, ratings, appt, onRate, onClose }: {
 
         {!ratable && (
           <div className="rating-locked">
-            {!appt || !appt.accepted
+            {!appt || appt.acceptedBy.length === 0
               ? '약속이 확정된 후 4시간이 지나면\n별점을 줄 수 있어요.'
               : `약속 후 약 ${hoursLeft}시간이 지나면\n별점을 줄 수 있어요.`}
           </div>
@@ -255,7 +255,13 @@ function LeaveModal({ onClose, onLeave }: { onClose: () => void; onLeave: () => 
 }
 
 // ── 약속 카드 ──
-function AppointmentCard({ appt, onAccept }: { appt: Appointment; onAccept: () => void }) {
+function AppointmentCard({ appt, totalMembers, currentNickname, onAccept }: {
+  appt: Appointment
+  totalMembers: number
+  currentNickname: string
+  onAccept: () => void
+}) {
+  const hasAccepted = appt.acceptedBy.includes(currentNickname)
   return (
     <div className="appt-card">
       <div className="appt-card-title">📅 약속 설정</div>
@@ -271,9 +277,12 @@ function AppointmentCard({ appt, onAccept }: { appt: Appointment; onAccept: () =
         <span className="appt-card-icon">🕐</span>
         <span className="appt-card-text">{formatDatetime(appt.datetimeISO)}</span>
       </div>
-      {!appt.accepted
+      <div className="appt-accept-row">
+        <span className="appt-accept-count">✅ {appt.acceptedBy.length}/{totalMembers} 수락</span>
+      </div>
+      {!hasAccepted
         ? <button className="btn-accept" onClick={onAccept}>수락하기</button>
-        : <div className="appt-accepted">✅ 약속이 확정되었어요!</div>}
+        : <div className="appt-accepted">내가 수락했어요!</div>}
     </div>
   )
 }
@@ -314,9 +323,10 @@ interface RoomProps {
   onSend: (text: string) => void
   onUpdateRoom: (room: ChatRoom) => void
   onLeave: () => void
+  currentUserNickname: string
 }
 
-export function ChatRoomView({ room, onBack, onSend, onUpdateRoom, onLeave }: RoomProps) {
+export function ChatRoomView({ room, onBack, onSend, onUpdateRoom, onLeave, currentUserNickname }: RoomProps) {
   const [input, setInput]               = useState('')
   const [showPlus, setShowPlus]         = useState(false)
   const [showAppModal, setShowAppModal] = useState(false)
@@ -336,7 +346,7 @@ export function ChatRoomView({ room, onBack, onSend, onUpdateRoom, onLeave }: Ro
     onUpdateRoom({
       ...room,
       messages: [...room.messages, apptMsg],
-      appointment: { place, datetimeISO: dt.toISOString(), accepted: false, verified: false },
+      appointment: { place, datetimeISO: dt.toISOString(), acceptedBy: [currentUserNickname], verified: false },
     })
     setShowAppModal(false)
   }
@@ -352,9 +362,12 @@ export function ChatRoomView({ room, onBack, onSend, onUpdateRoom, onLeave }: Ro
   }
 
   // 우상단 버튼
+  const allAccepted = appt && appt.acceptedBy.length >= room.members.length
   let rightBtn: React.ReactNode
-  if (!appt || !appt.accepted) {
+  if (!appt) {
     rightBtn = <button className="btn-appt-header" onClick={() => setShowAppModal(true)}>📍 약속장소 지정</button>
+  } else if (!allAccepted) {
+    rightBtn = <span className="btn-accept-status">{appt.acceptedBy.length}/{room.members.length} 수락</span>
   } else if (!appt.verified) {
     rightBtn = <button className="btn-verify-header" onClick={() => setShowVerify(true)}>✅ 만남인증</button>
   } else {
@@ -375,6 +388,7 @@ export function ChatRoomView({ room, onBack, onSend, onUpdateRoom, onLeave }: Ro
       {showVerify && appt && (
         <VerifyModal appointment={appt} onVerify={() => onUpdateRoom({ ...room, appointment: { ...appt, verified: true } })} onClose={() => setShowVerify(false)} />
       )}
+
       {showRating && (
         <RatingModal
           members={room.members}
@@ -396,7 +410,15 @@ export function ChatRoomView({ room, onBack, onSend, onUpdateRoom, onLeave }: Ro
         {room.messages.map(msg =>
           msg.isAppointment && appt ? (
             <div key={msg.id} className="appt-card-wrapper">
-              <AppointmentCard appt={appt} onAccept={() => onUpdateRoom({ ...room, appointment: { ...appt, accepted: true } })} />
+              <AppointmentCard
+                appt={appt}
+                totalMembers={room.members.length}
+                currentNickname={currentUserNickname}
+                onAccept={() => onUpdateRoom({
+                  ...room,
+                  appointment: { ...appt, acceptedBy: [...appt.acceptedBy, currentUserNickname] }
+                })}
+              />
             </div>
           ) : (
             <div key={msg.id} className={`chat-bubble-wrap ${msg.isMine ? 'mine' : 'theirs'}`}>

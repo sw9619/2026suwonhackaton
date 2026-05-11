@@ -174,6 +174,7 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
       onSend={handleSend}
       onUpdateRoom={handleUpdateRoom}
       onLeave={handleLeave}
+      currentUserNickname={currentUser.nickname}
     />
   )
 
