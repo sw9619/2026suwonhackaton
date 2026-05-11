@@ -102,7 +102,7 @@ function AppointmentModal({ onClose, onSend }: {
   )
 }
 
-// ── 만난인증 모달 ──
+// ── 만남인증 모달 ──
 function VerifyModal({ appointment, onVerify, onClose }: {
   appointment: Appointment; onVerify: () => void; onClose: () => void
 }) {
@@ -356,7 +356,7 @@ export function ChatRoomView({ room, onBack, onSend, onUpdateRoom, onLeave }: Ro
   if (!appt || !appt.accepted) {
     rightBtn = <button className="btn-appt-header" onClick={() => setShowAppModal(true)}>📍 약속장소 지정</button>
   } else if (!appt.verified) {
-    rightBtn = <button className="btn-verify-header" onClick={() => setShowVerify(true)}>✅ 만난인증</button>
+    rightBtn = <button className="btn-verify-header" onClick={() => setShowVerify(true)}>✅ 만남인증</button>
   } else {
     rightBtn = <span className="btn-verified-header">✓ 인증완료</span>
   }
