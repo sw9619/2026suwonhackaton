@@ -280,6 +280,9 @@ function AppointmentCard({ appt, totalMembers, currentNickname, onAccept }: {
       </div>
       <div className="appt-accept-row">
         <span className="appt-accept-count">✅ {appt.acceptedBy.length}/{totalMembers} 수락</span>
+        {appt.acceptedBy.length > 0 && (
+          <span className="appt-accept-names">{appt.acceptedBy.join(', ')}</span>
+        )}
       </div>
       {!hasAccepted
         ? <button className="btn-accept" onClick={onAccept}>수락하기</button>

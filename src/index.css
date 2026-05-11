@@ -943,8 +943,9 @@ body {
 .appt-accept-row {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
   padding: 4px 0;
+  flex-wrap: wrap;
 }
 
 .appt-accept-count {
@@ -954,6 +955,12 @@ body {
   background: #F0F0F0;
   padding: 4px 12px;
   border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.appt-accept-names {
+  font-size: 0.78rem;
+  color: #8E8E8E;
 }
 
 .btn-accept-status {
@@ -1040,20 +1047,14 @@ body {
 .chat-list-wrap {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 16px;
   animation: fadeIn 0.3s ease both;
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #DBDBDB;
-  overflow: hidden;
 }
 
 .chat-list-title {
   font-size: 1.1rem;
   font-weight: 800;
   color: #262626;
-  padding: 16px 16px 12px;
-  border-bottom: 1px solid #DBDBDB;
 }
 
 .chat-empty {
@@ -1064,7 +1065,11 @@ body {
   padding: 60px 20px;
 }
 
-.chat-rooms { display: flex; flex-direction: column; }
+.chat-rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
 .chat-room-item {
   display: flex;
@@ -1072,14 +1077,14 @@ body {
   gap: 14px;
   padding: 14px 16px;
   background: #fff;
-  border-bottom: 1px solid #DBDBDB;
+  border: 1px solid #DBDBDB;
+  border-radius: 12px;
   text-align: left;
   cursor: pointer;
   width: 100%;
   transition: background 0.12s;
 }
 
-.chat-room-item:last-child { border-bottom: none; }
 .chat-room-item:hover { background: #FAFAFA; }
 
 .chat-room-icon { font-size: 1.5rem; flex-shrink: 0; }
@@ -1948,8 +1953,8 @@ body {
 .dark .card-arrow { color: #555; }
 
 /* 채팅 목록 */
-.dark .chat-list-wrap { background: #1A1A1A; border-color: #262626; }
-.dark .chat-list-title { color: #fff; border-color: #262626; }
+.dark .chat-list-wrap { background: transparent; }
+.dark .chat-list-title { color: #fff; }
 .dark .chat-empty { color: #555; }
 .dark .chat-room-item { background: #1A1A1A; border-color: #262626; }
 .dark .chat-room-item:hover { background: #262626; }
@@ -1979,6 +1984,7 @@ body {
 
 /* 약속 카드 */
 .dark .appt-accept-count { background: #262626; color: #fff; }
+.dark .appt-accept-names { color: #555; }
 .dark .btn-accept-status { background: #262626; color: #fff; }
 .dark .appt-card { background: #1A1A1A; border-color: #363636; }
 .dark .appt-card-title { color: #fff; }
