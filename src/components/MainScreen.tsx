@@ -167,15 +167,6 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
       initialView="join-input"
     />
   )
-  if (sub === 'random-instant') return (
-    <RandomMatchScreen
-      onBack={() => setSub(null)}
-      currentUser={currentUser}
-      onMatchSuccess={handleMatchSuccess}
-      onRoomCreated={handleRoomCreated}
-      initialView="instant"
-    />
-  )
   if (sub === 'chatroom' && activeRoom) return (
     <ChatRoomView
       room={activeRoom}
@@ -193,7 +184,7 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
       </div>
 
       <div className="main-content">
-        {tab === '과팅'  && <GatingTab onCreate={() => setSub('random-create')} onJoin={() => setSub('random-join')} onInstant={() => setSub('random-instant')} />}
+        {tab === '과팅'  && <GatingTab onCreate={() => setSub('random-create')} onJoin={() => setSub('random-join')} />}
         {tab === '채팅방' && <ChatList rooms={chatRooms} onOpenRoom={handleOpenRoom} />}
         {tab === '설정'  && (
           <SettingsTab
@@ -238,7 +229,7 @@ function navIcon(tab: Tab) {
   )
 }
 
-function GatingTab({ onCreate, onJoin, onInstant }: { onCreate: () => void; onJoin: () => void; onInstant: () => void }) {
+function GatingTab({ onCreate, onJoin }: { onCreate: () => void; onJoin: () => void }) {
   return (
     <div className="gating-tab">
       <div className="gating-header">
@@ -258,14 +249,6 @@ function GatingTab({ onCreate, onJoin, onInstant }: { onCreate: () => void; onJo
           <div className="card-text">
             <span className="card-title">방 참여하기</span>
             <span className="card-desc">방 번호를 입력해서<br />과팅방에 입장하세요</span>
-          </div>
-          <span className="card-arrow">›</span>
-        </button>
-        <button className="gating-card card-instant" onClick={onInstant}>
-          <div className="card-icon">🎲</div>
-          <div className="card-text">
-            <span className="card-title">랜덤매칭</span>
-            <span className="card-desc">인원 설정 후 즉시<br />랜덤으로 매칭해드려요</span>
           </div>
           <span className="card-arrow">›</span>
         </button>
