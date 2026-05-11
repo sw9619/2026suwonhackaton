@@ -7,6 +7,7 @@ export interface ChatMessage {
   senderName?: string
   time: string
   isAppointment?: boolean
+  appointmentSnapshot?: Appointment  // 생성 시점의 약속 데이터
 }
 
 export interface Appointment {
@@ -213,15 +214,15 @@ function RatingModal({ members, ratings, appt, currentUserNickname, onRate, onCl
 }
 
 // ── + 메뉴 ──
-function PlusMenu({ onAppt, onRate, onLeave, onClose }: {
-  onAppt: () => void; onRate: () => void; onLeave: () => void; onClose: () => void
+function PlusMenu({ hasAppointment, onAppt, onRate, onLeave, onClose }: {
+  hasAppointment: boolean; onAppt: () => void; onRate: () => void; onLeave: () => void; onClose: () => void
 }) {
   return (
     <>
       <div className="plus-menu-overlay" onClick={onClose} />
       <div className="plus-menu">
         <button className="plus-menu-item" onClick={() => { onAppt(); onClose() }}>
-          <span>📍</span><span>약속장소 지정</span>
+          <span>📍</span><span>{hasAppointment ? '약속장소 변경하기' : '약속장소 지정'}</span>
         </button>
         <button className="plus-menu-item" onClick={() => { onRate(); onClose() }}>
           <span>⭐</span><span>별점 주기</span>
@@ -256,16 +257,17 @@ function LeaveModal({ onClose, onLeave }: { onClose: () => void; onLeave: () => 
 }
 
 // ── 약속 카드 ──
-function AppointmentCard({ appt, totalMembers, currentNickname, onAccept }: {
+function AppointmentCard({ appt, totalMembers, currentNickname, isCurrent, onAccept }: {
   appt: Appointment
   totalMembers: number
   currentNickname: string
+  isCurrent: boolean
   onAccept: () => void
 }) {
   const hasAccepted = appt.acceptedBy.includes(currentNickname)
   return (
-    <div className="appt-card">
-      <div className="appt-card-title">📅 약속 설정</div>
+    <div className={`appt-card ${!isCurrent ? 'appt-card-old' : ''}`}>
+      <div className="appt-card-title">{isCurrent ? '📅 약속 설정' : '📅 이전 약속'}</div>
       <div className="appt-card-row">
         <span className="appt-card-icon">📍</span>
         <span className="appt-card-text">{appt.place}</span>
@@ -278,15 +280,19 @@ function AppointmentCard({ appt, totalMembers, currentNickname, onAccept }: {
         <span className="appt-card-icon">🕐</span>
         <span className="appt-card-text">{formatDatetime(appt.datetimeISO)}</span>
       </div>
-      <div className="appt-accept-row">
-        <span className="appt-accept-count">✅ {appt.acceptedBy.length}/{totalMembers} 수락</span>
-        {appt.acceptedBy.length > 0 && (
-          <span className="appt-accept-names">{appt.acceptedBy.join(', ')}</span>
-        )}
-      </div>
-      {!hasAccepted
-        ? <button className="btn-accept" onClick={onAccept}>수락하기</button>
-        : <div className="appt-accepted">내가 수락했어요!</div>}
+      {isCurrent && (
+        <>
+          <div className="appt-accept-row">
+            <span className="appt-accept-count">✅ {appt.acceptedBy.length}/{totalMembers} 수락</span>
+            {appt.acceptedBy.length > 0 && (
+              <span className="appt-accept-names">{appt.acceptedBy.join(', ')}</span>
+            )}
+          </div>
+          {!hasAccepted
+            ? <button className="btn-accept" onClick={onAccept}>수락하기</button>
+            : <div className="appt-accepted">내가 수락했어요!</div>}
+        </>
+      )}
     </div>
   )
 }
@@ -346,12 +352,15 @@ export function ChatRoomView({ room, onBack, onSend, onUpdateRoom, onLeave, curr
   const appt = room.appointment
 
   const handleSetAppointment = (place: string, dt: Date) => {
-    const apptMsg: ChatMessage = { id: Date.now(), text: '', isMine: true, time: nowTime(), isAppointment: true }
-    onUpdateRoom({
-      ...room,
-      messages: [...room.messages, apptMsg],
-      appointment: { place, datetimeISO: dt.toISOString(), acceptedBy: [currentUserNickname], verified: false },
-    })
+    const t = nowTime()
+    const newAppt: Appointment = { place, datetimeISO: dt.toISOString(), acceptedBy: [currentUserNickname], verified: false }
+    const isChange = !!room.appointment
+    const newMessages: ChatMessage[] = [...room.messages]
+    if (isChange) {
+      newMessages.push({ id: Date.now() - 1, text: '📍 약속장소가 변경되었습니다.', isMine: false, senderName: '시스템', time: t })
+    }
+    newMessages.push({ id: Date.now(), text: '', isMine: true, time: t, isAppointment: true, appointmentSnapshot: newAppt })
+    onUpdateRoom({ ...room, messages: newMessages, appointment: newAppt })
     setShowAppModal(false)
   }
 
@@ -382,6 +391,7 @@ export function ChatRoomView({ room, onBack, onSend, onUpdateRoom, onLeave, curr
     <div className="chat-room-wrap">
       {showPlus && (
         <PlusMenu
+          hasAppointment={!!appt}
           onAppt={() => setShowAppModal(true)}
           onRate={() => setShowRating(true)}
           onLeave={() => setShowLeave(true)}
@@ -413,17 +423,25 @@ export function ChatRoomView({ room, onBack, onSend, onUpdateRoom, onLeave, curr
 
       <div className="chat-messages">
         {room.messages.map(msg =>
-          msg.isAppointment && appt ? (
+          msg.isAppointment && (msg.appointmentSnapshot ?? appt) ? (
             <div key={msg.id} className="appt-card-wrapper">
-              <AppointmentCard
-                appt={appt}
-                totalMembers={room.members.length}
-                currentNickname={currentUserNickname}
-                onAccept={() => onUpdateRoom({
-                  ...room,
-                  appointment: { ...appt, acceptedBy: [...appt.acceptedBy, currentUserNickname] }
-                })}
-              />
+              {(() => {
+                const msgAppt = msg.appointmentSnapshot ?? appt!
+                const isCurrent = appt ? msgAppt.datetimeISO === appt.datetimeISO && msgAppt.place === appt.place : false
+                const liveAppt = isCurrent ? appt! : msgAppt
+                return (
+                  <AppointmentCard
+                    appt={liveAppt}
+                    totalMembers={room.members.length}
+                    currentNickname={currentUserNickname}
+                    isCurrent={isCurrent}
+                    onAccept={() => onUpdateRoom({
+                      ...room,
+                      appointment: { ...appt!, acceptedBy: [...appt!.acceptedBy, currentUserNickname] }
+                    })}
+                  />
+                )
+              })()}
             </div>
           ) : (
             <div key={msg.id} className={`chat-bubble-wrap ${msg.isMine ? 'mine' : 'theirs'}`}>

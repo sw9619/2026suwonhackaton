@@ -886,6 +886,11 @@ body {
   width: 100%;
 }
 
+.appt-card-old {
+  opacity: 0.5;
+  background: #F8F8F8;
+}
+
 .appt-card-title {
   font-size: 0.85rem;
   font-weight: 800;
