@@ -259,25 +259,6 @@ export default function RandomMatchScreen({ onBack, currentUser, onMatchSuccess,
         <button className="btn-back" onClick={onBack}>← 뒤로</button>
         <h2 className="match-title">방 참여하기</h2>
 
-        {openRooms.length > 0 && (
-          <>
-            <p className="step-desc">참여 가능한 방 목록</p>
-            <div className="available-rooms">
-              {openRooms.map(room => (
-                <button key={room.id} className="available-room-card" onClick={() => onJoinPublicRoom?.(room)}>
-                  <div className="available-room-info">
-                    <span className="available-room-title">{room.title}</span>
-                    <span className="available-room-count">{room.memberCount}/{room.capacity}명</span>
-                  </div>
-                  <span className="available-room-code">#{room.code}</span>
-                  <span className="available-room-join">참여</span>
-                </button>
-              ))}
-            </div>
-            <div className="available-rooms-divider">또는 코드로 직접 입장</div>
-          </>
-        )}
-
         <p className="step-desc">방장에게 받은 6자리 초대 코드를 입력해주세요.</p>
         <div className="input-group">
           <label>초대 코드</label>
