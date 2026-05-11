@@ -891,6 +891,39 @@ body {
   background: #F8F8F8;
 }
 
+.appt-card-pending {
+  border-color: #f5a623;
+  background: #FFFBF0;
+}
+
+.appt-btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.appt-btn-row .btn-accept { flex: 1; margin-top: 0; }
+
+.btn-reject {
+  flex: 1;
+  padding: 10px;
+  background: #fff;
+  color: #ED4956;
+  border: 1.5px solid #ED4956;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-reject:hover { background: #FFF5F5; }
+
+.btn-accept-status.pending {
+  background: #FFF3CD;
+  color: #856404;
+}
+
 .appt-card-title {
   font-size: 0.85rem;
   font-weight: 800;

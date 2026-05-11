@@ -13,8 +13,9 @@ export interface ChatMessage {
 export interface Appointment {
   place: string
   datetimeISO: string
-  acceptedBy: string[]  // 수락한 멤버 닉네임 목록
+  acceptedBy: string[]
   verified: boolean
+  isPending?: boolean  // 변경 제안 중 (전원 수락 전)
 }
 
 export interface ChatRoom {
@@ -22,10 +23,11 @@ export interface ChatRoom {
   title: string
   messages: ChatMessage[]
   appointment?: Appointment
-  capacity: number        // 최대 인원
-  memberCount: number     // 현재 인원
-  members: string[]       // 닉네임 목록
-  ratings: Record<string, number> // 내가 준 별점 { nickname: stars }
+  previousAppointment?: Appointment  // 변경 제안 중일 때 기존 약속 보존
+  capacity: number
+  memberCount: number
+  members: string[]
+  ratings: Record<string, number>
 }
 
 function nowTime() {
@@ -257,17 +259,21 @@ function LeaveModal({ onClose, onLeave }: { onClose: () => void; onLeave: () => 
 }
 
 // ── 약속 카드 ──
-function AppointmentCard({ appt, totalMembers, currentNickname, isCurrent, onAccept }: {
+function AppointmentCard({ appt, totalMembers, currentNickname, isCurrent, onAccept, onReject }: {
   appt: Appointment
   totalMembers: number
   currentNickname: string
   isCurrent: boolean
   onAccept: () => void
+  onReject: () => void
 }) {
   const hasAccepted = appt.acceptedBy.includes(currentNickname)
+  const isPending = isCurrent && appt.isPending
   return (
-    <div className={`appt-card ${!isCurrent ? 'appt-card-old' : ''}`}>
-      <div className="appt-card-title">{isCurrent ? '📅 약속 설정' : '📅 이전 약속'}</div>
+    <div className={`appt-card ${!isCurrent ? 'appt-card-old' : ''} ${isPending ? 'appt-card-pending' : ''}`}>
+      <div className="appt-card-title">
+        {!isCurrent ? '📅 이전 약속' : isPending ? '📍 약속장소 변경 제안' : '📅 약속 설정'}
+      </div>
       <div className="appt-card-row">
         <span className="appt-card-icon">📍</span>
         <span className="appt-card-text">{appt.place}</span>
@@ -288,9 +294,14 @@ function AppointmentCard({ appt, totalMembers, currentNickname, isCurrent, onAcc
               <span className="appt-accept-names">{appt.acceptedBy.join(', ')}</span>
             )}
           </div>
-          {!hasAccepted
-            ? <button className="btn-accept" onClick={onAccept}>수락하기</button>
-            : <div className="appt-accepted">내가 수락했어요!</div>}
+          <div className="appt-btn-row">
+            {!hasAccepted
+              ? <button className="btn-accept" onClick={onAccept}>수락하기</button>
+              : <div className="appt-accepted">내가 수락했어요!</div>}
+            {isPending && (
+              <button className="btn-reject" onClick={onReject}>거절하기</button>
+            )}
+          </div>
         </>
       )}
     </div>
@@ -353,14 +364,24 @@ export function ChatRoomView({ room, onBack, onSend, onUpdateRoom, onLeave, curr
 
   const handleSetAppointment = (place: string, dt: Date) => {
     const t = nowTime()
-    const newAppt: Appointment = { place, datetimeISO: dt.toISOString(), acceptedBy: [currentUserNickname], verified: false }
     const isChange = !!room.appointment
+    const newAppt: Appointment = {
+      place, datetimeISO: dt.toISOString(),
+      acceptedBy: [currentUserNickname],
+      verified: false,
+      isPending: isChange,
+    }
     const newMessages: ChatMessage[] = [...room.messages]
     if (isChange) {
-      newMessages.push({ id: Date.now() - 1, text: '📍 약속장소가 변경되었습니다.', isMine: false, senderName: '시스템', time: t })
+      newMessages.push({ id: Date.now() - 1, text: '📍 약속장소 변경이 제안되었습니다. 모두가 수락하면 변경돼요.', isMine: false, senderName: '시스템', time: t })
     }
     newMessages.push({ id: Date.now(), text: '', isMine: true, time: t, isAppointment: true, appointmentSnapshot: newAppt })
-    onUpdateRoom({ ...room, messages: newMessages, appointment: newAppt })
+    onUpdateRoom({
+      ...room,
+      messages: newMessages,
+      appointment: newAppt,
+      previousAppointment: isChange ? room.appointment : undefined,
+    })
     setShowAppModal(false)
   }
 
@@ -379,6 +400,8 @@ export function ChatRoomView({ room, onBack, onSend, onUpdateRoom, onLeave, curr
   let rightBtn: React.ReactNode
   if (!appt) {
     rightBtn = <button className="btn-appt-header" onClick={() => setShowAppModal(true)}>📍 약속장소 지정</button>
+  } else if (appt.isPending) {
+    rightBtn = <span className="btn-accept-status pending">{appt.acceptedBy.length}/{room.members.length} 제안 중</span>
   } else if (!allAccepted) {
     rightBtn = <span className="btn-accept-status">{appt.acceptedBy.length}/{room.members.length} 수락</span>
   } else if (!appt.verified) {
@@ -429,16 +452,34 @@ export function ChatRoomView({ room, onBack, onSend, onUpdateRoom, onLeave, curr
                 const msgAppt = msg.appointmentSnapshot ?? appt!
                 const isCurrent = appt ? msgAppt.datetimeISO === appt.datetimeISO && msgAppt.place === appt.place : false
                 const liveAppt = isCurrent ? appt! : msgAppt
+                const t = nowTime()
                 return (
                   <AppointmentCard
                     appt={liveAppt}
                     totalMembers={room.members.length}
                     currentNickname={currentUserNickname}
                     isCurrent={isCurrent}
-                    onAccept={() => onUpdateRoom({
-                      ...room,
-                      appointment: { ...appt!, acceptedBy: [...appt!.acceptedBy, currentUserNickname] }
-                    })}
+                    onAccept={() => {
+                      const newAcceptedBy = [...appt!.acceptedBy, currentUserNickname]
+                      const allAccepted = newAcceptedBy.length >= room.members.length
+                      const extraMsg: ChatMessage[] = allAccepted
+                        ? [{ id: Date.now(), text: '✅ 모두가 약속장소 변경을 수락했어요!', isMine: false, senderName: '시스템', time: t }]
+                        : []
+                      onUpdateRoom({
+                        ...room,
+                        messages: [...room.messages, ...extraMsg],
+                        appointment: { ...appt!, acceptedBy: newAcceptedBy, isPending: !allAccepted },
+                        previousAppointment: allAccepted ? undefined : room.previousAppointment,
+                      })
+                    }}
+                    onReject={() => {
+                      onUpdateRoom({
+                        ...room,
+                        messages: [...room.messages, { id: Date.now(), text: '❌ 약속장소 변경이 거절되었습니다. 기존 약속장소로 유지돼요.', isMine: false, senderName: '시스템', time: t }],
+                        appointment: room.previousAppointment,
+                        previousAppointment: undefined,
+                      })
+                    }}
                   />
                 )
               })()}
