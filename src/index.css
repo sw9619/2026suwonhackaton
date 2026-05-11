@@ -65,13 +65,13 @@ body {
 .splash-title {
   font-size: 2.8rem;
   font-weight: 800;
-  font-style: italic;
   background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   letter-spacing: -1px;
-  line-height: 1.1;
+  line-height: 1.2;
+  padding-right: 4px;
 }
 
 .splash-subtitle {
@@ -123,12 +123,12 @@ body {
 .login-title {
   font-size: 1.9rem;
   font-weight: 800;
-  font-style: italic;
   background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   margin-bottom: 4px;
+  padding-right: 4px;
 }
 
 .input-group {
@@ -355,12 +355,12 @@ body {
 .main-topbar-title {
   font-size: 1.4rem;
   font-weight: 800;
-  font-style: italic;
   background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   letter-spacing: -0.5px;
+  padding-right: 4px;
 }
 
 .btn-bell {

@@ -239,8 +239,8 @@ function GatingTab({ onCreate, onJoin }: { onCreate: () => void; onJoin: () => v
         <button className="gating-card card-notice" onClick={onCreate}>
           <div className="card-icon">🏠</div>
           <div className="card-text">
-            <span className="card-title">방 만들기</span>
-            <span className="card-desc">방을 개설하고 고유 번호로<br />친구를 초대하세요</span>
+            <span className="card-title">매칭하기</span>
+            <span className="card-desc">친구랑 함께 또는 혼자서<br />매칭해보세요.</span>
           </div>
           <span className="card-arrow">›</span>
         </button>
