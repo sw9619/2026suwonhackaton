@@ -153,10 +153,11 @@ function VerifyModal({ appointment, onVerify, onClose }: {
 }
 
 // ── 별점 주기 모달 ──
-function RatingModal({ members, ratings, appt, onRate, onClose }: {
+function RatingModal({ members, ratings, appt, currentUserNickname, onRate, onClose }: {
   members: string[]
   ratings: Record<string, number>
   appt?: Appointment
+  currentUserNickname: string
   onRate: (nickname: string, stars: number) => void
   onClose: () => void
 }) {
@@ -186,7 +187,7 @@ function RatingModal({ members, ratings, appt, onRate, onClose }: {
           </div>
         )}
 
-        {ratable && members.filter(m => m !== '나').map(nickname => (
+        {ratable && members.filter(m => m !== currentUserNickname).map(nickname => (
           <div key={nickname} className="rating-row">
             <span className="rating-name">{nickname}</span>
             <div className="star-row">
@@ -394,6 +395,7 @@ export function ChatRoomView({ room, onBack, onSend, onUpdateRoom, onLeave, curr
           members={room.members}
           ratings={room.ratings}
           appt={appt}
+          currentUserNickname={currentUserNickname}
           onRate={handleRate}
           onClose={() => setShowRating(false)}
         />
