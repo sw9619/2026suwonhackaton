@@ -171,7 +171,7 @@ export default function RandomMatchScreen({ onBack, currentUser, onMatchSuccess,
   // ── 방 설정 ──
   if (view === 'host-setup') return (
     <div className="match-wrap">
-      <button className="btn-back" onClick={() => setView('select')}>← 뒤로</button>
+      <button className="btn-back" onClick={onBack}>← 뒤로</button>
       <h2 className="match-title">방 만들기</h2>
 
       <div className="input-group">
