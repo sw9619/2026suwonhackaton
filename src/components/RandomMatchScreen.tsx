@@ -190,21 +190,9 @@ export default function RandomMatchScreen({ onBack, currentUser, onMatchSuccess,
         </p>
       </div>
 
-      <div className="input-group">
-        <label>우리 팀 성별</label>
-        <div className="gender-row">
-          {(['남', '여'] as TeamGender[]).map(g => (
-            <button key={g}
-              className={`btn-gender ${teamGender === g ? 'selected' : ''}`}
-              onClick={() => setTeamGender(g)}>
-              {g}자팀
-            </button>
-          ))}
-        </div>
-        <p className="step-desc" style={{ marginTop: 8 }}>
-          우리 팀 {teamGender}자 {matchSize}명 vs 상대팀 {otherGender}자 {matchSize}명
-        </p>
-      </div>
+      <p className="step-desc">
+        우리 팀 {teamGender}자 {matchSize}명 vs 상대팀 {otherGender}자 {matchSize}명으로 매칭돼요.
+      </p>
 
       <button className="btn-login" onClick={createRoom}>방 만들기</button>
     </div>
@@ -330,21 +318,9 @@ export default function RandomMatchScreen({ onBack, currentUser, onMatchSuccess,
         </div>
       </div>
 
-      <div className="input-group">
-        <label>우리 팀 성별</label>
-        <div className="gender-row">
-          {(['남', '여'] as TeamGender[]).map(g => (
-            <button key={g}
-              className={`btn-gender ${teamGender === g ? 'selected' : ''}`}
-              onClick={() => setTeamGender(g)}>
-              {g}자팀
-            </button>
-          ))}
-        </div>
-        <p className="step-desc" style={{ marginTop: 8 }}>
-          {teamGender}자 {matchSize}명 vs {otherGender}자 {matchSize}명 매칭
-        </p>
-      </div>
+      <p className="step-desc">
+        {teamGender}자 {matchSize}명 vs {otherGender}자 {matchSize}명으로 매칭돼요.
+      </p>
 
       <button className="btn-login" onClick={() => {
         setView('instant-searching')
