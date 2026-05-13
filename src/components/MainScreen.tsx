@@ -272,12 +272,12 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
       senderName: currentUser.nickname, time: nowTime(),
     }
     const updated = { ...activeRoom, messages: [...activeRoom.messages, msg] }
-    setChatRooms(prev => prev.map(r => r.id === updated.id ? updated : r))
+    setChatRooms(prev => [updated, ...prev.filter(r => r.id !== updated.id)])
     setActiveRoom(updated)
   }
 
   const handleUpdateRoom = (updatedRoom: ChatRoom) => {
-    setChatRooms(prev => prev.map(r => r.id === updatedRoom.id ? updatedRoom : r))
+    setChatRooms(prev => [updatedRoom, ...prev.filter(r => r.id !== updatedRoom.id)])
     setActiveRoom(updatedRoom)
   }
 
@@ -308,7 +308,7 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
     }
     setChatRooms(prev => {
       if (prev.some(r => r.id === dmRoomId)) return prev
-      return [...prev, newRoom]
+      return [newRoom, ...prev]
     })
     setActiveRoom(newRoom)
     setSub('chatroom')
