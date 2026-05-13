@@ -448,7 +448,7 @@ export function setupSocket(io: IOServer) {
           const time = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
 
           socket.broadcast.to(`room:${roomId}`).emit('new-message', {
-            id: msg.id, text: msg.text, senderName: msg.nickname,
+            id: msg.id, roomId, text: msg.text, senderName: msg.nickname,
             userId: msg.user_id, time, type: msg.type,
           })
         } catch (err) {

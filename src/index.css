@@ -1248,6 +1248,21 @@ body {
   text-overflow: ellipsis;
 }
 
+.chat-unread-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: #ff3b30;
+  color: #fff;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .chat-room-arrow {
   font-size: 1.4rem;
   color: #ccc;
@@ -2299,6 +2314,7 @@ body {
 .dark .chat-room-name { color: #e6edf3; }
 .dark .chat-room-last { color: #556070; }
 .dark .chat-room-arrow { color: #30363d; }
+.dark .chat-unread-badge { background: #e74c3c; }
 
 /* ── 채팅방 뷰 ── */
 .dark .chat-room-wrap { background: #0d1117; }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import SettingsTab from './SettingsTab'
 import { ChatList, ChatRoomView, ChatRoom, ChatMessage, Appointment } from './ChatScreen'
 import RandomMatchScreen, { UserProfile, MockUser, TeamState, SoloQueueState, MatchStartedPayload } from './RandomMatchScreen'
@@ -98,6 +98,16 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
   const [soloQueueState, setSoloQueueState] = useState<SoloQueueState | null>(null)
   const [showSoloCancelConfirm, setShowSoloCancelConfirm] = useState(false)
   const [showTeamCancelConfirm, setShowTeamCancelConfirm] = useState(false)
+  const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({})
+
+  // stale closure 방지용 refs
+  const activeRoomIdRef = useRef<number | null>(null)
+  useEffect(() => { activeRoomIdRef.current = activeRoom?.id ?? null }, [activeRoom])
+  const chatRoomsRef = useRef<ChatRoom[]>([])
+  useEffect(() => { chatRoomsRef.current = chatRooms }, [chatRooms])
+  const subValueRef = useRef<SubScreen>(null)
+  useEffect(() => { subValueRef.current = sub }, [sub])
+  const joinedRoomIds = useRef(new Set<number>())
 
   const handleMatchSuccess = (matchedUsers: MockUser[], size: number, roomId?: number) => {
     showMatchNotification()
@@ -244,6 +254,38 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
     return () => { socket.off('match-started', onMatchStarted) }
   }, [soloQueueState, sub])
 
+  // 모든 채팅방 소켓 구독 (새 방 추가 시 자동 join)
+  useEffect(() => {
+    const socket = getSocket()
+    for (const room of chatRooms) {
+      if (!joinedRoomIds.current.has(room.id)) {
+        socket.emit('join-room', room.id)
+        joinedRoomIds.current.add(room.id)
+      }
+    }
+  }, [chatRooms])
+
+  // 글로벌 new-message 리스너: 안 읽은 메시지 카운트 + 브라우저 알림
+  useEffect(() => {
+    const socket = getSocket()
+    const onNewMessage = (msg: { id: number; roomId: number; text: string; senderName: string; userId: number; time: string; type: string }) => {
+      const isActiveRoom = subValueRef.current === 'chatroom' && activeRoomIdRef.current === msg.roomId
+      if (isActiveRoom) return
+      setUnreadCounts(prev => ({ ...prev, [msg.roomId]: (prev[msg.roomId] ?? 0) + 1 }))
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && !document.hasFocus()) {
+        try {
+          const room = chatRoomsRef.current.find(r => r.id === msg.roomId)
+          new Notification(`💬 ${room?.title ?? '새 메시지'}`, {
+            body: `${msg.senderName}: ${msg.text}`,
+            icon: '/favicon.ico',
+          })
+        } catch { /* ignore */ }
+      }
+    }
+    socket.on('new-message', onNewMessage)
+    return () => { socket.off('new-message', onNewMessage) }
+  }, [])
+
   const handleGoToMainSolo = useCallback((state: SoloQueueState) => {
     setSoloQueueState(state)
     setSub(null)
@@ -263,6 +305,7 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
   const handleOpenRoom = (room: ChatRoom) => {
     setActiveRoom(room)
     setSub('chatroom')
+    setUnreadCounts(prev => ({ ...prev, [room.id]: 0 }))
   }
 
   const handleSend = (text: string) => {
@@ -286,6 +329,9 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
     try {
       await api.del(`/rooms/${activeRoom.id}/leave`, {}, true)
     } catch { /* ignore */ }
+    getSocket().emit('leave-room', activeRoom.id)
+    joinedRoomIds.current.delete(activeRoom.id)
+    setUnreadCounts(prev => { const next = { ...prev }; delete next[activeRoom.id]; return next })
     setChatRooms(prev => prev.filter(r => r.id !== activeRoom.id))
     setActiveRoom(null)
     setSub(null)
@@ -458,7 +504,7 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
             onJoin={() => setSub('random-join')}
           />
         )}
-        {tab === '채팅방' && <ChatList rooms={chatRooms} onOpenRoom={handleOpenRoom} currentUserId={currentUser.id} currentGender={currentUser.gender} />}
+        {tab === '채팅방' && <ChatList rooms={chatRooms} onOpenRoom={handleOpenRoom} currentUserId={currentUser.id} currentGender={currentUser.gender} unreadCounts={unreadCounts} />}
         {tab === '설정'  && (
           <SettingsTab
             onLogout={onLogout}

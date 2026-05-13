@@ -441,11 +441,12 @@ function getRoomDisplayTitle(room: ChatRoom, currentUserId?: number, currentGend
   return room.title
 }
 
-export function ChatList({ rooms, onOpenRoom, currentUserId, currentGender }: {
+export function ChatList({ rooms, onOpenRoom, currentUserId, currentGender, unreadCounts }: {
   rooms: ChatRoom[]
   onOpenRoom: (room: ChatRoom) => void
   currentUserId?: number
   currentGender?: string
+  unreadCounts?: Record<number, number>
 }) {
   return (
     <div className="chat-list-wrap">
@@ -457,6 +458,7 @@ export function ChatList({ rooms, onOpenRoom, currentUserId, currentGender }: {
           {rooms.map(room => {
             const last = room.messages[room.messages.length - 1]
             const preview = last?.isAppointment ? '📅 약속이 설정되었어요' : (last?.text ?? '채팅을 시작해보세요!')
+            const unread = unreadCounts?.[room.id] ?? 0
             return (
               <button key={room.id} className="chat-room-item" onClick={() => onOpenRoom(room)}>
                 <div className="chat-room-icon">💬</div>
@@ -464,6 +466,7 @@ export function ChatList({ rooms, onOpenRoom, currentUserId, currentGender }: {
                   <span className="chat-room-name">{getRoomDisplayTitle(room, currentUserId, currentGender)}</span>
                   <span className="chat-room-last">{preview}</span>
                 </div>
+                {unread > 0 && <span className="chat-unread-badge">{unread > 99 ? '99+' : unread}</span>}
                 <span className="chat-room-arrow">›</span>
               </button>
             )
@@ -527,7 +530,7 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     const socket = getSocket()
     socket.emit('join-room', room.id)
 
-    socket.on('new-message', (msg: { id: number; text: string; senderName: string; userId: number; time: string; type: string }) => {
+    const onNewMessage = (msg: { id: number; roomId?: number; text: string; senderName: string; userId: number; time: string; type: string }) => {
       const newMsg: ChatMessage = {
         id: msg.id, text: msg.text,
         isMine: msg.userId === currentUserId,
@@ -536,9 +539,9 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
       }
       const cur = roomRef.current
       onUpdateRoom({ ...cur, messages: [...cur.messages, newMsg] })
-    })
+    }
 
-    socket.on('appointment-updated', (data: { place: string; datetimeISO: string; acceptedBy: number[]; verifiedBy: number[]; accepted: boolean; verified: boolean }) => {
+    const onAppointmentUpdated = (data: { place: string; datetimeISO: string; acceptedBy: number[]; verifiedBy: number[]; accepted: boolean; verified: boolean }) => {
       const apptMsg: ChatMessage = { id: Date.now(), text: '', isMine: false, time: nowTime(), isAppointment: true }
       const cur = roomRef.current
       onUpdateRoom({
@@ -546,27 +549,27 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
         messages: [...cur.messages, apptMsg],
         appointment: { place: data.place, datetimeISO: data.datetimeISO, accepted: false, acceptedBy: [], verified: false, verifiedBy: [] },
       })
-    })
+    }
 
-    socket.on('appointment-accepted', (data: { roomId: number; acceptedBy: number[]; isFullyAccepted: boolean }) => {
+    const onAppointmentAccepted = (data: { roomId: number; acceptedBy: number[]; isFullyAccepted: boolean }) => {
       const cur = roomRef.current
       if (cur.appointment) {
         onUpdateRoom({ ...cur, appointment: { ...cur.appointment, accepted: data.isFullyAccepted, acceptedBy: data.acceptedBy } })
       }
-    })
+    }
 
-    socket.on('appointment-verified', (data: { roomId: number; verifiedBy: number[] }) => {
+    const onAppointmentVerified = (data: { roomId: number; verifiedBy: number[] }) => {
       const cur = roomRef.current
       if (cur.appointment) {
         onUpdateRoom({ ...cur, appointment: { ...cur.appointment, verifiedBy: data.verifiedBy, verified: data.verifiedBy.length > 0 } })
       }
-    })
+    }
 
-    socket.on('mutual-match-found', (data: { dmRoomId: number; title: string; otherUser: { id: number; nickname: string } }) => {
+    const onMutualMatchFound = (data: { dmRoomId: number; title: string; otherUser: { id: number; nickname: string } }) => {
       onMutualMatch?.(data.dmRoomId, data.title, data.otherUser.nickname)
-    })
+    }
 
-    socket.on('nickname-changed', (data: { userId: number; nickname: string }) => {
+    const onNicknameChanged = (data: { userId: number; nickname: string }) => {
       const cur = roomRef.current
       const updatedDetails = cur.memberDetails?.map(m =>
         m.id === data.userId ? { ...m, nickname: data.nickname } : m
@@ -576,16 +579,23 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
         return detail?.id === data.userId ? data.nickname : name
       })
       onUpdateRoom({ ...cur, memberDetails: updatedDetails, members: updatedMembers })
-    })
+    }
+
+    socket.on('new-message', onNewMessage)
+    socket.on('appointment-updated', onAppointmentUpdated)
+    socket.on('appointment-accepted', onAppointmentAccepted)
+    socket.on('appointment-verified', onAppointmentVerified)
+    socket.on('mutual-match-found', onMutualMatchFound)
+    socket.on('nickname-changed', onNicknameChanged)
 
     return () => {
-      socket.off('new-message')
-      socket.off('appointment-updated')
-      socket.off('appointment-accepted')
-      socket.off('appointment-verified')
-      socket.off('mutual-match-found')
-      socket.off('nickname-changed')
-      socket.emit('leave-room', room.id)
+      socket.off('new-message', onNewMessage)
+      socket.off('appointment-updated', onAppointmentUpdated)
+      socket.off('appointment-accepted', onAppointmentAccepted)
+      socket.off('appointment-verified', onAppointmentVerified)
+      socket.off('mutual-match-found', onMutualMatchFound)
+      socket.off('nickname-changed', onNicknameChanged)
+      // leave-room은 MainScreen이 관리하므로 여기서는 emit하지 않음
     }
   }, [room.id])
 
