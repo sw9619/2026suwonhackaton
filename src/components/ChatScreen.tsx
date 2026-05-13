@@ -668,6 +668,9 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
   let rightBtn: React.ReactNode
   if (!appt) {
     rightBtn = <button className="btn-appt-header" onClick={() => setShowAppModal(true)}>📍 약속장소 지정</button>
+  } else if (!appt.accepted) {
+    const acceptCount = appt.acceptedBy.length
+    rightBtn = <span style={{ fontSize: '0.75rem', color: '#aaa', whiteSpace: 'nowrap' }}>✅ {acceptCount}/{room.capacity}명 수락</span>
   } else if (!myVerified) {
     rightBtn = <button className="btn-verify-header" onClick={() => setShowVerify(true)}>✅ 만남 인증</button>
   } else {

@@ -399,7 +399,7 @@ export default function RandomMatchScreen({
       <div className="input-group">
         <label>미팅 인원</label>
         <div className="match-size-row">
-          {[1, 2, 3, 4].map(n => (
+          {[2, 3, 4].map(n => (
             <button key={n} className={`match-size-btn ${matchSize === n ? 'selected' : ''}`} onClick={() => setMatchSize(n)}>
               {n}v{n}
             </button>
@@ -700,7 +700,7 @@ export default function RandomMatchScreen({
           <div className="input-group">
             <label>미팅 인원</label>
             <div className="match-size-row">
-              {[1, 2, 3, 4].map(n => (
+              {[2, 3, 4].map(n => (
                 <button key={n}
                   className={`match-size-btn ${quickMatchSize === n ? 'selected' : ''}`}
                   onClick={() => setQuickMatchSize(n)}>

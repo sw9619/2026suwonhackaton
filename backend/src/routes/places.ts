@@ -58,29 +58,32 @@ router.get('/search', async (req: Request, res: Response) => {
 
       return res.json({ places })
     } else {
-      const query = `${q} 수원`
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=jsonv2&limit=15&countrycodes=kr&accept-language=ko&addressdetails=1`
-      const resp = await fetch(url, {
-        headers: { 'User-Agent': 'SuwonSignal/1.0 (hackathon@suwon.ac.kr)' },
-      })
-      if (!resp.ok) throw new Error(`Nominatim error: ${resp.status}`)
-      const data = await resp.json() as {
-        name: string
-        display_name: string
-        type: string
-        class: string
-        lat: string
-        lon: string
-      }[]
+      // Nominatim fallback: 검색어 그대로 사용 (수원 강제 추가 제거)
+      const fetchNominatim = async (query: string) => {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=jsonv2&limit=20&countrycodes=kr&accept-language=ko&addressdetails=1&namedetails=1`
+        const resp = await fetch(url, {
+          headers: { 'User-Agent': 'SuwonSignal/1.0 (hackathon@suwon.ac.kr)' },
+        })
+        if (!resp.ok) throw new Error(`Nominatim error: ${resp.status}`)
+        return resp.json() as Promise<{
+          name: string; display_name: string; type: string; class: string; lat: string; lon: string
+        }[]>
+      }
+
+      // 먼저 원래 쿼리로 검색, 결과 없으면 "수원 + 쿼리"로 재시도
+      let data = await fetchNominatim(q!)
+      if (data.length === 0) {
+        data = await fetchNominatim(`수원 ${q}`)
+      }
 
       const places = data
-        .filter(d => d.name && d.class !== 'boundary' && d.type !== 'administrative')
+        .filter(d => d.name && d.class !== 'boundary')
         .map(d => {
           const placeLat = parseFloat(d.lat)
           const placeLng = parseFloat(d.lon)
           const parts = d.display_name.split(', ')
           const addrParts = parts.slice(1).filter(p =>
-            !p.match(/^\d+/) && p !== '대한민국' && p.length < 20
+            !p.match(/^\d+/) && p !== '대한민국' && p.length < 30
           ).slice(0, 3)
           const distance = hasUserPos ? distKm(userLat!, userLng!, placeLat, placeLng) : undefined
           return {
@@ -96,7 +99,7 @@ router.get('/search', async (req: Request, res: Response) => {
 
       if (hasUserPos) places.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
 
-      return res.json({ places: places.slice(0, 10) })
+      return res.json({ places: places.slice(0, 15) })
     }
   } catch (e) {
     console.error('[GET /places/search]', e)
