@@ -367,18 +367,74 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
       initialView="quick-match"
     />
   )
+  const renderMatchingOverlay = () => (
+    <>
+      {showSoloCancelConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <div className="modal-header"><h3 className="modal-title">빠른 매칭 취소</h3></div>
+            <p className="step-desc" style={{ textAlign: 'center' }}>빠른 매칭을 취소하시겠어요?</p>
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button className="btn-signup" style={{ flex: 1 }} onClick={() => setShowSoloCancelConfirm(false)}>아니오</button>
+              <button className="btn-login" style={{ flex: 1, background: '#e74c3c' }} onClick={() => { setShowSoloCancelConfirm(false); handleCancelSoloQueue() }}>예</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showTeamCancelConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <div className="modal-header"><h3 className="modal-title">매칭 취소</h3></div>
+            <p className="step-desc" style={{ textAlign: 'center' }}>팀 매칭을 취소하고 방을 나가시겠어요?</p>
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button className="btn-signup" style={{ flex: 1 }} onClick={() => setShowTeamCancelConfirm(false)}>아니오</button>
+              <button className="btn-login" style={{ flex: 1, background: '#e74c3c' }} onClick={() => { setShowTeamCancelConfirm(false); handleCancelTeam() }}>예</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {soloQueueState && !teamState && (
+        <div onClick={handleResumeSoloQueue} style={{ position: 'fixed', bottom: 70, left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 32px)', maxWidth: 390, background: 'linear-gradient(135deg, #ff6b9d, #ff8c69)', borderRadius: 16, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.18)', zIndex: 300 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: '1.5rem', animation: 'heartSpin 1s linear infinite' }}>💘</span>
+            <div>
+              <p style={{ margin: 0, fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>빠른 매칭 중...</p>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.85)', fontSize: '0.78rem' }}>{soloQueueState.matchSize}v{soloQueueState.matchSize} · 탭해서 돌아가기</p>
+            </div>
+          </div>
+          <button style={{ background: 'rgba(255,255,255,0.22)', border: 'none', color: '#fff', borderRadius: 8, padding: '5px 12px', fontSize: '0.78rem', cursor: 'pointer', flexShrink: 0 }} onClick={e => { e.stopPropagation(); setShowSoloCancelConfirm(true) }}>취소</button>
+        </div>
+      )}
+      {teamState && (
+        <div onClick={handleResumeTeam} style={{ position: 'fixed', bottom: 70, left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 32px)', maxWidth: 390, background: teamState.isSeeking ? 'linear-gradient(135deg, #ff6b9d, #ff8c69)' : 'linear-gradient(135deg, #5b87ff, #7b6fff)', borderRadius: 16, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.18)', zIndex: 300 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: '1.5rem', animation: teamState.isSeeking ? 'heartSpin 1s linear infinite' : 'none' }}>{teamState.isSeeking ? '💘' : '🏠'}</span>
+            <div>
+              <p style={{ margin: 0, fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>{teamState.isSeeking ? '매칭 중...' : '팀 대기 중'}</p>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.85)', fontSize: '0.78rem' }}>코드 {teamState.roomCode} · {teamState.matchSize}v{teamState.matchSize} · 탭해서 돌아가기</p>
+            </div>
+          </div>
+          <button style={{ background: 'rgba(255,255,255,0.22)', border: 'none', color: '#fff', borderRadius: 8, padding: '5px 12px', fontSize: '0.78rem', cursor: 'pointer', flexShrink: 0 }} onClick={e => { e.stopPropagation(); setShowTeamCancelConfirm(true) }}>나가기</button>
+        </div>
+      )}
+    </>
+  )
+
   if (sub === 'chatroom' && activeRoom) return (
-    <ChatRoomView
-      room={activeRoom}
-      currentUserId={currentUser.id}
-      currentNickname={currentUser.nickname}
-      currentGender={currentUser.gender}
-      onBack={() => { setSub(null); setTab('채팅방') }}
-      onSend={handleSend}
-      onUpdateRoom={handleUpdateRoom}
-      onLeave={handleLeave}
-      onMutualMatch={handleMutualMatch}
-    />
+    <>
+      <ChatRoomView
+        room={activeRoom}
+        currentUserId={currentUser.id}
+        currentNickname={currentUser.nickname}
+        currentGender={currentUser.gender}
+        onBack={() => { setSub(null); setTab('채팅방') }}
+        onSend={handleSend}
+        onUpdateRoom={handleUpdateRoom}
+        onLeave={handleLeave}
+        onMutualMatch={handleMutualMatch}
+      />
+      {renderMatchingOverlay()}
+    </>
   )
 
   return (
@@ -418,141 +474,7 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
         ))}
       </nav>
 
-      {/* 빠른 매칭 취소 확인 모달 */}
-      {showSoloCancelConfirm && (
-        <div className="modal-overlay">
-          <div className="modal-box">
-            <div className="modal-header">
-              <h3 className="modal-title">빠른 매칭 취소</h3>
-            </div>
-            <p className="step-desc" style={{ textAlign: 'center' }}>빠른 매칭을 취소하시겠어요?</p>
-            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-              <button className="btn-signup" style={{ flex: 1 }} onClick={() => setShowSoloCancelConfirm(false)}>아니오</button>
-              <button className="btn-login" style={{ flex: 1, background: '#e74c3c' }} onClick={() => { setShowSoloCancelConfirm(false); handleCancelSoloQueue() }}>예</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 팀 매칭 취소 확인 모달 */}
-      {showTeamCancelConfirm && (
-        <div className="modal-overlay">
-          <div className="modal-box">
-            <div className="modal-header">
-              <h3 className="modal-title">매칭 취소</h3>
-            </div>
-            <p className="step-desc" style={{ textAlign: 'center' }}>팀 매칭을 취소하고 방을 나가시겠어요?</p>
-            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-              <button className="btn-signup" style={{ flex: 1 }} onClick={() => setShowTeamCancelConfirm(false)}>아니오</button>
-              <button className="btn-login" style={{ flex: 1, background: '#e74c3c' }} onClick={() => { setShowTeamCancelConfirm(false); handleCancelTeam() }}>예</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 빠른 매칭 대기 팝업 */}
-      {soloQueueState && !teamState && (
-        <div
-          onClick={handleResumeSoloQueue}
-          style={{
-            position: 'fixed',
-            bottom: 70,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 'calc(100% - 32px)',
-            maxWidth: 390,
-            background: 'linear-gradient(135deg, #ff6b9d, #ff8c69)',
-            borderRadius: 16,
-            padding: '14px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            cursor: 'pointer',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
-            zIndex: 200,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: '1.5rem', animation: 'heartSpin 1s linear infinite' }}>💘</span>
-            <div>
-              <p style={{ margin: 0, fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>빠른 매칭 중...</p>
-              <p style={{ margin: 0, color: 'rgba(255,255,255,0.85)', fontSize: '0.78rem' }}>
-                {soloQueueState.matchSize}v{soloQueueState.matchSize} · 탭해서 돌아가기
-              </p>
-            </div>
-          </div>
-          <button
-            style={{
-              background: 'rgba(255,255,255,0.22)',
-              border: 'none',
-              color: '#fff',
-              borderRadius: 8,
-              padding: '5px 12px',
-              fontSize: '0.78rem',
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
-            onClick={e => { e.stopPropagation(); setShowSoloCancelConfirm(true) }}
-          >
-            취소
-          </button>
-        </div>
-      )}
-
-      {/* 팀 대기/매칭 중 팝업 */}
-      {teamState && (
-        <div
-          onClick={handleResumeTeam}
-          style={{
-            position: 'fixed',
-            bottom: 70,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 'calc(100% - 32px)',
-            maxWidth: 390,
-            background: teamState.isSeeking
-              ? 'linear-gradient(135deg, #ff6b9d, #ff8c69)'
-              : 'linear-gradient(135deg, #5b87ff, #7b6fff)',
-            borderRadius: 16,
-            padding: '14px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            cursor: 'pointer',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
-            zIndex: 200,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: '1.5rem', animation: teamState.isSeeking ? 'heartSpin 1s linear infinite' : 'none' }}>
-              {teamState.isSeeking ? '💘' : '🏠'}
-            </span>
-            <div>
-              <p style={{ margin: 0, fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>
-                {teamState.isSeeking ? '매칭 중...' : '팀 대기 중'}
-              </p>
-              <p style={{ margin: 0, color: 'rgba(255,255,255,0.85)', fontSize: '0.78rem' }}>
-                코드 {teamState.roomCode} · {teamState.matchSize}v{teamState.matchSize} · 탭해서 돌아가기
-              </p>
-            </div>
-          </div>
-          <button
-            style={{
-              background: 'rgba(255,255,255,0.22)',
-              border: 'none',
-              color: '#fff',
-              borderRadius: 8,
-              padding: '5px 12px',
-              fontSize: '0.78rem',
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
-            onClick={e => { e.stopPropagation(); setShowTeamCancelConfirm(true) }}
-          >
-            나가기
-          </button>
-        </div>
-      )}
+      {renderMatchingOverlay()}
     </div>
   )
 }

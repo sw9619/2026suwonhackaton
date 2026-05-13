@@ -500,6 +500,13 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
 
   const appt = room.appointment
   const myVerified = currentUserId ? (appt?.verifiedBy ?? []).includes(currentUserId) : false
+  const lastApptMsgId = useMemo(() =>
+    [...room.messages].reverse().find(m => m.isAppointment)?.id
+  , [room.messages])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView()
+  }, [])
 
   useEffect(() => {
     const socket = getSocket()
@@ -713,10 +720,17 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
 
       <div className="chat-messages">
         {room.messages.map(msg =>
-          msg.isAppointment && appt ? (
-            <div key={msg.id} className="appt-card-wrapper">
-              <AppointmentCard appt={appt} currentUserId={currentUserId} totalCapacity={room.capacity} onAccept={handleAcceptAppointment} />
-            </div>
+          msg.isAppointment ? (
+            msg.id === lastApptMsgId && appt ? (
+              <div key={msg.id} className="appt-card-wrapper">
+                <AppointmentCard appt={appt} currentUserId={currentUserId} totalCapacity={room.capacity} onAccept={handleAcceptAppointment} />
+              </div>
+            ) : (
+              <div key={msg.id} className="chat-bubble-wrap theirs">
+                <div className="chat-bubble bubble-theirs" style={{ background: '#f0f0f0', color: '#999', fontSize: '0.82rem' }}>📍 약속이 변경되었습니다</div>
+                <span className="chat-time">{msg.time}</span>
+              </div>
+            )
           ) : (
             <div key={msg.id} className={`chat-bubble-wrap ${msg.isMine ? 'mine' : 'theirs'}`}>
               {!msg.isMine && msg.senderName && <span className="chat-sender-name">{msg.senderName}</span>}
