@@ -170,6 +170,9 @@ async function tryMatchRoomWithSoloQueue(
   const queue = soloQueue.get(key) ?? []
   if (queue.length === 0) return false
 
+  // 방 인원이 정원에 미달이면 매칭 불가
+  if (roomMembers.length < roomCapacity) return false
+
   const roomDeptSet = new Set(roomMembers.map(m => m.dept))
   const matched: SoloUser[] = []
   for (const u of queue) {
@@ -179,7 +182,8 @@ async function tryMatchRoomWithSoloQueue(
       { deptSet: new Set([u.dept]), allowDuplicate: u.allowDuplicate }
     )) matched.push(u)
   }
-  if (matched.length === 0) return false
+  // 상대측도 정원만큼 모여야 매칭
+  if (matched.length < roomCapacity) return false
 
   const matchedIds = new Set(matched.map(u => u.userId))
   soloQueue.set(key, queue.filter(u => !matchedIds.has(u.userId)))
@@ -205,9 +209,13 @@ async function tryMatchSoloQueueWithRoom(
   const myQueue = soloQueue.get(key) ?? []
   if (myQueue.length === 0) return false
 
+  // 솔로 큐도 정원만큼 모여야 매칭 시도
+  if (myQueue.length < matchSize) return false
+
   const candidates: [number, SeekingRoom][] = []
   for (const [roomId, info] of seekingRooms.entries()) {
-    if (info.capacity === matchSize && info.teamGender === oppositeGender && info.memberCount >= 1) {
+    // 상대 팀방도 정원이 다 찬 경우만 매칭
+    if (info.capacity === matchSize && info.teamGender === oppositeGender && info.memberCount >= matchSize) {
       candidates.push([roomId, info])
     }
   }
@@ -291,7 +299,7 @@ export function setupSocket(io: IOServer) {
 
           const compatibleRoomId = findCompatibleRoom(capacity, myGender, myDeptSet, myAllowDuplicate)
 
-          if (compatibleRoomId !== null && myMemberCount >= 1) {
+          if (compatibleRoomId !== null && myMemberCount >= capacity) {
             seekingRooms.delete(compatibleRoomId)
 
             const theirMembers = await db.all<{ id: number; nickname: string; gender: string; dept: string; email: string; student_id: string }>(`
