@@ -96,6 +96,10 @@ function AppointmentModal({ onClose, onSend }: {
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null)
   const canSend = place.trim() && dateStr && timeStr
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const queryRef = useRef(query)
+  const userPosRef = useRef(userPos)
+  useEffect(() => { queryRef.current = query }, [query])
+  useEffect(() => { userPosRef.current = userPos }, [userPos])
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -107,7 +111,7 @@ function AppointmentModal({ onClose, onSend }: {
   }, [])
 
   const searchPlace = useCallback(async (q?: string) => {
-    const searchQ = (q ?? query).trim()
+    const searchQ = (q ?? queryRef.current).trim()
     if (!searchQ) return
     setSearching(true)
     try {
@@ -120,7 +124,7 @@ function AppointmentModal({ onClose, onSend }: {
     } finally {
       setSearching(false)
     }
-  }, [query, userPos])
+  }, [])
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
