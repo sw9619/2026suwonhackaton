@@ -457,7 +457,7 @@ export function setupSocket(io: IOServer) {
       })()
     })
 
-    socket.on('appointment-set', (data: { roomId: number; place: string; datetimeISO: string }) => {
+    socket.on('appointment-set', (data: { roomId: number; place: string; datetimeISO: string; lat?: number; lng?: number }) => {
       // 발신자 제외하고 나머지에게만 전송 (발신자는 낙관적 업데이트)
       socket.broadcast.to(`room:${data.roomId}`).emit('appointment-updated', { ...data, acceptedBy: [], verifiedBy: [], accepted: false, verified: false })
     })

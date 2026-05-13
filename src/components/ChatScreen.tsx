@@ -560,13 +560,13 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     const socket = getSocket()
     socket.emit('join-room', room.id)
 
-    const onAppointmentUpdated = (data: { place: string; datetimeISO: string; acceptedBy: number[]; verifiedBy: number[]; accepted: boolean; verified: boolean }) => {
+    const onAppointmentUpdated = (data: { place: string; datetimeISO: string; acceptedBy: number[]; verifiedBy: number[]; accepted: boolean; verified: boolean; lat?: number; lng?: number }) => {
       const apptMsg: ChatMessage = { id: Date.now(), text: '', isMine: false, time: nowTime(), isAppointment: true }
       const cur = roomRef.current
       onUpdateRoom({
         ...cur,
         messages: [...cur.messages, apptMsg],
-        appointment: { place: data.place, datetimeISO: data.datetimeISO, accepted: false, acceptedBy: [], verified: false, verifiedBy: [] },
+        appointment: { place: data.place, datetimeISO: data.datetimeISO, accepted: false, acceptedBy: [], verified: false, verifiedBy: [], lat: data.lat, lng: data.lng },
       })
     }
 
@@ -625,7 +625,7 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     try {
       await api.post(`/rooms/${room.id}/appointment`, { place, datetimeISO, lat, lng }, true)
       const socket = getSocket()
-      socket.emit('appointment-set', { roomId: room.id, place, datetimeISO })
+      socket.emit('appointment-set', { roomId: room.id, place, datetimeISO, lat, lng })
       // 발신자 낙관적 업데이트 (다른 사람들은 소켓 이벤트로 수신)
       const apptMsg: ChatMessage = { id: Date.now(), text: '', isMine: true, time: nowTime(), isAppointment: true }
       onUpdateRoom({
