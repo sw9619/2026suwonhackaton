@@ -356,7 +356,7 @@ function PlusMenu({ onAppt, onLeave, onClose }: {
       <div className="plus-menu-overlay" onClick={onClose} />
       <div className="plus-menu">
         <button className="plus-menu-item" onClick={() => { onAppt(); onClose() }}>
-          <span>📍</span><span>약속장소 지정</span>
+          <span>📍</span><span>{hasAppointment ? '약속장소 변경하기' : '약속장소 지정'}</span>
         </button>
         <button className="plus-menu-item danger" onClick={() => { onLeave(); onClose() }}>
           <span>🚪</span><span>채팅방 나가기</span>
@@ -398,8 +398,10 @@ function AppointmentCard({ appt, currentUserId, totalCapacity, onAccept }: {
   const acceptCount = appt.acceptedBy.length
 
   return (
-    <div className="appt-card">
-      <div className="appt-card-title">📅 약속 설정</div>
+    <div className={`appt-card ${!isCurrent ? 'appt-card-old' : ''} ${isPending ? 'appt-card-pending' : ''}`}>
+      <div className="appt-card-title">
+        {!isCurrent ? '📅 이전 약속' : isPending ? '📍 약속장소 변경 제안' : '📅 약속 설정'}
+      </div>
       <div className="appt-card-row">
         <span className="appt-card-icon">📍</span>
         <span className="appt-card-text">{appt.place}</span>
@@ -644,7 +646,7 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
   }
 
   let rightBtn: React.ReactNode
-  if (!appt || !appt.accepted) {
+  if (!appt) {
     rightBtn = <button className="btn-appt-header" onClick={() => setShowAppModal(true)}>📍 약속장소 지정</button>
   } else if (!myVerified) {
     rightBtn = <button className="btn-verify-header" onClick={() => setShowVerify(true)}>✅ 만남 인증</button>
@@ -665,6 +667,7 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     <div className="chat-room-wrap">
       {showPlus && (
         <PlusMenu
+          hasAppointment={!!appt}
           onAppt={() => setShowAppModal(true)}
           onLeave={() => setShowLeave(true)}
           onClose={() => setShowPlus(false)}
