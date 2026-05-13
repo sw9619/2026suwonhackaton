@@ -70,10 +70,10 @@ router.get('/search', async (req: Request, res: Response) => {
         }[]>
       }
 
-      // 먼저 원래 쿼리로 검색, 결과 없으면 "수원 + 쿼리"로 재시도
+      // 먼저 원래 쿼리로 검색, 결과 없으면 "쿼리 수원"으로 재시도 (Nominatim 한국어 지명 검색 보완)
       let data = await fetchNominatim(q!)
       if (data.length === 0) {
-        data = await fetchNominatim(`수원 ${q}`)
+        data = await fetchNominatim(`${q} 수원`)
       }
 
       const places = data
