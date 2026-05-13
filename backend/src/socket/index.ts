@@ -198,6 +198,89 @@ async function tryMatchRoomWithSoloQueue(
   return true
 }
 
+// 정원 미달 방 + 같은 성별 솔로큐 → 팀 완성 후 매칭
+async function tryFillAndMatchRoom(
+  io: IOServer,
+  roomId: number,
+  capacity: number,
+  roomGender: string,
+  roomAllowDuplicate: boolean,
+  roomMembers: { id: number; dept: string }[]
+): Promise<boolean> {
+  const needed = capacity - roomMembers.length
+  if (needed <= 0) return false
+
+  const sameKey = `${capacity}-${roomGender}`
+  const sameQueue = soloQueue.get(sameKey) ?? []
+  if (sameQueue.length < needed) return false
+
+  const fillers = sameQueue.slice(0, needed)
+  const combinedMembers = [
+    ...roomMembers,
+    ...fillers.map(u => ({ id: u.userId, dept: u.dept })),
+  ]
+  const combinedDeptSet = new Set(combinedMembers.map(m => m.dept))
+  const combinedAllowDuplicate = roomAllowDuplicate && fillers.every(u => u.allowDuplicate)
+
+  // 경로 1: 합쳐진 팀 vs 상대 방
+  const compatibleRoomId = findCompatibleRoom(capacity, roomGender, combinedDeptSet, combinedAllowDuplicate)
+  if (compatibleRoomId !== null) {
+    const fillerIds = new Set(fillers.map(u => u.userId))
+    soloQueue.set(sameKey, sameQueue.filter(u => !fillerIds.has(u.userId)))
+    seekingRooms.delete(compatibleRoomId)
+    seekingRooms.delete(roomId)
+
+    const theirMembers = await db.all<{ id: number }>(
+      'SELECT u.id FROM room_members rm JOIN users u ON u.id = rm.user_id WHERE rm.room_id = ?',
+      compatibleRoomId
+    )
+    await db.run("UPDATE rooms SET status = 'closed' WHERE id = ? OR id = ?", roomId, compatibleRoomId)
+    await createMatchRoomAndNotify(io, capacity, roomGender,
+      combinedMembers.map(m => ({ userId: m.id })),
+      theirMembers.map(m => ({ userId: m.id }))
+    )
+    broadcastQueueStatus(io, capacity, roomGender)
+    console.log(`[Socket] 혼합매칭 (방+솔로→방): room${roomId} + 솔로${needed}명 vs room${compatibleRoomId}`)
+    return true
+  }
+
+  // 경로 2: 합쳐진 팀 vs 상대 솔로큐
+  const oppositeGender = roomGender === '남' ? '여' : '남'
+  const oppositeKey = `${capacity}-${oppositeGender}`
+  const oppositeQueue = soloQueue.get(oppositeKey) ?? []
+
+  if (oppositeQueue.length >= capacity) {
+    for (let i = 0; i <= oppositeQueue.length - capacity; i++) {
+      const theirTeam = oppositeQueue.slice(i, i + capacity)
+      const theirDeptSet = new Set(theirTeam.map(u => u.dept))
+      const theirAllowDuplicate = theirTeam.every(u => u.allowDuplicate)
+
+      if (canMatch(
+        { deptSet: combinedDeptSet, allowDuplicate: combinedAllowDuplicate },
+        { deptSet: theirDeptSet, allowDuplicate: theirAllowDuplicate }
+      )) {
+        const fillerIds = new Set(fillers.map(u => u.userId))
+        const theirIds = new Set(theirTeam.map(u => u.userId))
+        soloQueue.set(sameKey, sameQueue.filter(u => !fillerIds.has(u.userId)))
+        soloQueue.set(oppositeKey, oppositeQueue.filter(u => !theirIds.has(u.userId)))
+        seekingRooms.delete(roomId)
+
+        await db.run("UPDATE rooms SET status = 'closed' WHERE id = ?", roomId)
+        await createMatchRoomAndNotify(io, capacity, roomGender,
+          combinedMembers.map(m => ({ userId: m.id })),
+          theirTeam.map(u => ({ userId: u.userId }))
+        )
+        broadcastQueueStatus(io, capacity, roomGender)
+        broadcastQueueStatus(io, capacity, oppositeGender)
+        console.log(`[Socket] 혼합매칭 (방+솔로→솔로큐): room${roomId} + 솔로${needed}명 vs 솔로${capacity}명`)
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
 // 빠른매칭 솔로 → 방만들기 팀 크로스 매칭
 async function tryMatchSoloQueueWithRoom(
   io: IOServer,
@@ -340,15 +423,21 @@ export function setupSocket(io: IOServer) {
               myMembers.map(m => ({ id: m.id, dept: m.dept }))
             )
             if (!crossMatched) {
-              seekingRooms.set(roomId, {
-                capacity, teamGender: myGender, memberCount: myMemberCount,
-                deptSet: myDeptSet, allowDuplicate: myAllowDuplicate, timestamp: Date.now(),
-              })
-              await db.run("UPDATE rooms SET status = 'seeking' WHERE id = ?", roomId)
-              io.to(`room:${roomId}`).emit('match-seeking', { roomId, memberCount: myMemberCount })
+              const fillMatched = await tryFillAndMatchRoom(
+                io, roomId, capacity, myGender, myAllowDuplicate,
+                myMembers.map(m => ({ id: m.id, dept: m.dept }))
+              )
+              if (!fillMatched) {
+                seekingRooms.set(roomId, {
+                  capacity, teamGender: myGender, memberCount: myMemberCount,
+                  deptSet: myDeptSet, allowDuplicate: myAllowDuplicate, timestamp: Date.now(),
+                })
+                await db.run("UPDATE rooms SET status = 'seeking' WHERE id = ?", roomId)
+                io.to(`room:${roomId}`).emit('match-seeking', { roomId, memberCount: myMemberCount })
 
-              const reason = myMemberCount < capacity ? `정원 미달 (${myMemberCount}/${capacity}명)` : '상대팀 대기 없음'
-              console.log(`[Socket] 팀매칭 대기: room${roomId} (${myGender} ${myMemberCount}/${capacity}명, 이유: ${reason})`)
+                const reason = myMemberCount < capacity ? `정원 미달 (${myMemberCount}/${capacity}명)` : '상대팀 대기 없음'
+                console.log(`[Socket] 팀매칭 대기: room${roomId} (${myGender} ${myMemberCount}/${capacity}명, 이유: ${reason})`)
+              }
             }
           }
         } catch (err) {
@@ -409,6 +498,18 @@ export function setupSocket(io: IOServer) {
 
           await tryCreateSoloMatch(io, matchSize, user.gender)
           await tryMatchSoloQueueWithRoom(io, matchSize, user.gender)
+
+          // 같은 성별 정원 미달 방이 있으면 솔로 유입으로 팀 완성 후 매칭 시도
+          for (const [seekRoomId, roomInfo] of seekingRooms.entries()) {
+            if (roomInfo.teamGender === user.gender && roomInfo.capacity === matchSize && roomInfo.memberCount < roomInfo.capacity) {
+              const roomMembers = await db.all<{ id: number; dept: string }>(
+                'SELECT u.id, u.dept FROM room_members rm JOIN users u ON u.id = rm.user_id WHERE rm.room_id = ?',
+                seekRoomId
+              )
+              const filled = await tryFillAndMatchRoom(io, seekRoomId, roomInfo.capacity, roomInfo.teamGender, roomInfo.allowDuplicate, roomMembers)
+              if (filled) break
+            }
+          }
         } catch (err) {
           console.error('[Socket] solo-queue-join error:', err)
         }
