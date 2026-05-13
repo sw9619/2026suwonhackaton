@@ -392,12 +392,6 @@ export default function RandomMatchScreen({
     waitStartRef.current = null
   }
 
-  const handleEnableAllowDuplicate = () => {
-    setAllowDuplicate(true)
-    const socket = getSocket()
-    socket.emit('solo-queue-leave', { matchSize: quickMatchSize })
-    socket.emit('solo-queue-join', { matchSize: quickMatchSize, allowDuplicate: true })
-  }
 
   const handleKick = async (memberNickname: string, idx: number) => {
     try {
@@ -773,16 +767,6 @@ export default function RandomMatchScreen({
               </div>
             </div>
 
-            {/* 3분 이상 대기 + 중복거부 상태일 때 지연 알림 */}
-            {waitSeconds >= 180 && !allowDuplicate && (
-              <div className="match-delay-banner">
-                <p className="match-delay-text">⏳ 매칭이 지연되고 있습니다</p>
-                <p className="match-delay-sub">학과 중복을 허용하면 더 빠르게 매칭될 수 있어요!</p>
-                <button className="match-delay-btn" onClick={handleEnableAllowDuplicate}>
-                  학과 중복 허용으로 변경 💘
-                </button>
-              </div>
-            )}
 
             <p style={{ fontSize: '0.75rem', color: '#aaa' }}>
               대기 {Math.floor(waitSeconds / 60)}분 {waitSeconds % 60}초
