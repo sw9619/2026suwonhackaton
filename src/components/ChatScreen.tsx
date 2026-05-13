@@ -21,6 +21,7 @@ export interface Appointment {
   verifiedBy: number[]
   lat?: number
   lng?: number
+  isPending?: boolean
 }
 
 export interface MemberDetail {
@@ -348,8 +349,8 @@ function PickFavoriteModal({ roomId, memberDetails, currentUserId, currentNickna
   )
 }
 
-function PlusMenu({ onAppt, onLeave, onClose }: {
-  onAppt: () => void; onLeave: () => void; onClose: () => void
+function PlusMenu({ hasAppointment, onAppt, onLeave, onClose }: {
+  hasAppointment: boolean; onAppt: () => void; onLeave: () => void; onClose: () => void
 }) {
   return (
     <>
@@ -388,14 +389,16 @@ function LeaveModal({ onClose, onLeave }: { onClose: () => void; onLeave: () => 
 
 // ── 약속 카드 ───────────────────────────────────────────────────
 
-function AppointmentCard({ appt, currentUserId, totalCapacity, onAccept }: {
+function AppointmentCard({ appt, currentUserId, totalCapacity, onAccept, isCurrent = true }: {
   appt: Appointment
   currentUserId?: number
   totalCapacity: number
   onAccept: () => void
+  isCurrent?: boolean
 }) {
   const myAccepted = currentUserId ? appt.acceptedBy.includes(currentUserId) : false
   const acceptCount = appt.acceptedBy.length
+  const isPending = isCurrent && !!appt.isPending
 
   return (
     <div className={`appt-card ${!isCurrent ? 'appt-card-old' : ''} ${isPending ? 'appt-card-pending' : ''}`}>
