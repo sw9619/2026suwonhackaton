@@ -1091,6 +1091,11 @@ body {
   font-size: 0.78rem;
   margin-top: 2px;
 }
+.search-phone {
+  color: #888;
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
 .place-selected-box {
   margin-top: 8px;
   padding: 8px 12px;
@@ -2176,6 +2181,7 @@ body {
 .dark .search-category-badge { color: #8b949e; background: #243044; }
 .dark .search-distance-badge { color: #87CEEB; background: #1a2a3a; }
 .dark .search-address { color: #8b949e; }
+.dark .search-phone { color: #8b949e; }
 .dark .place-selected-box { background: #1c2a3a; color: #e6edf3; }
 .dark .place-map-link { color: #87CEEB; }
 

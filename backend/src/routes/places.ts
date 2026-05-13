@@ -12,6 +12,17 @@ function distKm(lat1: number, lng1: number, lat2: number, lng2: number): number 
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
+interface KakaoDoc {
+  place_name: string
+  address_name: string
+  road_address_name: string
+  category_group_name: string
+  category_name: string
+  phone: string
+  x: string
+  y: string
+}
+
 router.get('/search', async (req: Request, res: Response) => {
   const { q, lat, lng } = req.query as { q?: string; lat?: string; lng?: string }
   if (!q?.trim()) return res.json({ places: [] })
@@ -20,87 +31,52 @@ router.get('/search', async (req: Request, res: Response) => {
   const userLng = lng ? parseFloat(lng) : null
   const hasUserPos = userLat !== null && userLng !== null && !isNaN(userLat) && !isNaN(userLng)
 
-  const kakaoKey = process.env.KAKAO_REST_KEY?.trim()
+  const kakaoKey = (process.env.KAKAO_REST_KEY ?? 'beba33e1efaee632aeebdad1bf4e5e6a').trim()
 
   try {
-    if (kakaoKey) {
-      let url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(q)}&size=15`
+    const fetchPage = async (page: number) => {
+      let url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(q!)}&size=15&page=${page}`
       if (hasUserPos) url += `&x=${userLng}&y=${userLat}&sort=distance`
-
       const resp = await fetch(url, { headers: { Authorization: `KakaoAK ${kakaoKey}` } })
       if (!resp.ok) throw new Error(`Kakao API error: ${resp.status}`)
-      const data = await resp.json() as {
-        documents: {
-          place_name: string
-          address_name: string
-          road_address_name: string
-          category_group_name: string
-          x: string
-          y: string
-        }[]
-      }
-
-      const places = (data.documents ?? []).map(d => {
-        const placeLat = parseFloat(d.y)
-        const placeLng = parseFloat(d.x)
-        const distance = hasUserPos ? distKm(userLat!, userLng!, placeLat, placeLng) : undefined
-        return {
-          name: d.place_name,
-          address: d.road_address_name || d.address_name,
-          category: d.category_group_name || undefined,
-          lat: placeLat,
-          lng: placeLng,
-          distance,
-        }
-      })
-
-      if (hasUserPos) places.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
-
-      return res.json({ places })
-    } else {
-      // Nominatim fallback: 검색어 그대로 사용 (수원 강제 추가 제거)
-      const fetchNominatim = async (query: string) => {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=jsonv2&limit=20&countrycodes=kr&accept-language=ko&addressdetails=1&namedetails=1`
-        const resp = await fetch(url, {
-          headers: { 'User-Agent': 'SuwonSignal/1.0 (hackathon@suwon.ac.kr)' },
-        })
-        if (!resp.ok) throw new Error(`Nominatim error: ${resp.status}`)
-        return resp.json() as Promise<{
-          name: string; display_name: string; type: string; class: string; lat: string; lon: string
-        }[]>
-      }
-
-      // 먼저 원래 쿼리로 검색, 결과 없으면 "수원 + 쿼리"로 재시도
-      let data = await fetchNominatim(q!)
-      if (data.length === 0) {
-        data = await fetchNominatim(`수원 ${q}`)
-      }
-
-      const places = data
-        .filter(d => d.name && d.class !== 'boundary')
-        .map(d => {
-          const placeLat = parseFloat(d.lat)
-          const placeLng = parseFloat(d.lon)
-          const parts = d.display_name.split(', ')
-          const addrParts = parts.slice(1).filter(p =>
-            !p.match(/^\d+/) && p !== '대한민국' && p.length < 30
-          ).slice(0, 3)
-          const distance = hasUserPos ? distKm(userLat!, userLng!, placeLat, placeLng) : undefined
-          return {
-            name: d.name || parts[0],
-            address: addrParts.join(' '),
-            category: d.type,
-            lat: placeLat,
-            lng: placeLng,
-            distance,
-          }
-        })
-        .filter((p, i, arr) => arr.findIndex(x => x.name === p.name) === i)
-
-      if (hasUserPos) places.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
-
-      return res.json({ places: places.slice(0, 15) })
+      const data = await resp.json() as { documents: KakaoDoc[]; meta: { total_count: number; is_end: boolean } }
+      return data
     }
+
+    const page1 = await fetchPage(1)
+    let docs: KakaoDoc[] = [...page1.documents]
+
+    // 결과가 15개 이상이고 2페이지 있으면 추가 로드
+    if (!page1.meta.is_end && page1.meta.total_count > 15) {
+      try {
+        const page2 = await fetchPage(2)
+        docs = [...docs, ...page2.documents]
+      } catch {
+        // 2페이지 실패해도 1페이지 결과 사용
+      }
+    }
+
+    const places = docs.map(d => {
+      const placeLat = parseFloat(d.y)
+      const placeLng = parseFloat(d.x)
+      const distance = hasUserPos ? distKm(userLat!, userLng!, placeLat, placeLng) : undefined
+      // category_name 마지막 세그먼트만 표시 (ex. "음식점 > 한식 > 국밥" → "국밥")
+      const categoryDetail = d.category_name?.split(' > ').pop() ?? d.category_group_name ?? undefined
+      return {
+        name: d.place_name,
+        address: d.road_address_name || d.address_name,
+        category: d.category_group_name || categoryDetail || undefined,
+        categoryDetail,
+        phone: d.phone || undefined,
+        lat: placeLat,
+        lng: placeLng,
+        distance,
+      }
+    })
+
+    if (hasUserPos) places.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
+
+    return res.json({ places })
   } catch (e) {
     console.error('[GET /places/search]', e)
     return res.json({ places: [] })

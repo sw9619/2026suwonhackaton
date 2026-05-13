@@ -86,7 +86,7 @@ function AppointmentModal({ onClose, onSend }: {
   onSend: (place: string, dt: Date, lat?: number, lng?: number) => void
 }) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<{ name: string; address: string; category?: string; lat?: number; lng?: number; distance?: number }[]>([])
+  const [results, setResults] = useState<{ name: string; address: string; category?: string; categoryDetail?: string; phone?: string; lat?: number; lng?: number; distance?: number }[]>([])
   const [searching, setSearching] = useState(false)
   const [place, setPlace] = useState('')
   const [selectedLat, setSelectedLat] = useState<number | undefined>()
@@ -113,7 +113,7 @@ function AppointmentModal({ onClose, onSend }: {
     try {
       let url = `/places/search?q=${encodeURIComponent(searchQ)}`
       if (userPos) url += `&lat=${userPos.lat}&lng=${userPos.lng}`
-      const data = await api.get<{ places: { name: string; address: string; category?: string; lat?: number; lng?: number; distance?: number }[] }>(url)
+      const data = await api.get<{ places: { name: string; address: string; category?: string; categoryDetail?: string; phone?: string; lat?: number; lng?: number; distance?: number }[] }>(url)
       setResults(data.places)
     } catch {
       setResults([])
@@ -127,7 +127,7 @@ function AppointmentModal({ onClose, onSend }: {
     setQuery(val)
     if (searchTimer.current) clearTimeout(searchTimer.current)
     if (val.trim().length >= 2) {
-      searchTimer.current = setTimeout(() => searchPlace(val), 500)
+      searchTimer.current = setTimeout(() => searchPlace(val), 300)
     } else {
       setResults([])
     }
@@ -164,7 +164,9 @@ function AppointmentModal({ onClose, onSend }: {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
                     <div style={{ fontWeight: 600, fontSize: '0.9rem', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
-                      {r.category && <span className="search-category-badge">{r.category}</span>}
+                      {(r.categoryDetail || r.category) && (
+                        <span className="search-category-badge">{r.categoryDetail || r.category}</span>
+                      )}
                       {r.distance !== undefined && (
                         <span className="search-distance-badge">
                           {r.distance < 1 ? `${Math.round(r.distance * 1000)}m` : `${r.distance.toFixed(1)}km`}
@@ -173,6 +175,7 @@ function AppointmentModal({ onClose, onSend }: {
                     </div>
                   </div>
                   <div className="search-address">{r.address}</div>
+                  {r.phone && <div className="search-phone">📞 {r.phone}</div>}
                 </button>
               ))}
             </div>
