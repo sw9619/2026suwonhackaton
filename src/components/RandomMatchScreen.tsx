@@ -105,6 +105,8 @@ export default function RandomMatchScreen({
   const [quickMatchSize, setQuickMatchSize] = useState(soloStateResume?.matchSize ?? 2)
   const [quickMatchActive, setQuickMatchActive] = useState(!!soloStateResume)
   const [queueStatus, setQueueStatus] = useState({ myCount: soloStateResume ? 1 : 0, theirCount: 0, needed: soloStateResume?.matchSize ?? 2 })
+  const [waitSeconds, setWaitSeconds] = useState(0)
+  const waitStartRef = useRef<number | null>(soloStateResume ? Date.now() : null)
 
   // 학과 중복 옵션 (host-setup & quick-match 공통)
   const [allowDuplicate, setAllowDuplicate] = useState(soloStateResume?.allowDuplicate ?? true)
@@ -173,6 +175,17 @@ export default function RandomMatchScreen({
       socket.off('match-started', onMatchStarted)
     }
   }, [view, processMatchResult])
+
+  // 빠른 매칭 대기 타이머
+  useEffect(() => {
+    if (!quickMatchActive) return
+    const timer = setInterval(() => {
+      if (waitStartRef.current) {
+        setWaitSeconds(Math.floor((Date.now() - waitStartRef.current) / 1000))
+      }
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [quickMatchActive])
 
   // host-wait 소켓
   useEffect(() => {
@@ -365,6 +378,8 @@ export default function RandomMatchScreen({
 
   const handleStartQuickMatch = () => {
     setQueueStatus({ myCount: 1, theirCount: 0, needed: quickMatchSize })
+    setWaitSeconds(0)
+    waitStartRef.current = Date.now()
     setQuickMatchActive(true)
     getSocket().emit('solo-queue-join', { matchSize: quickMatchSize, allowDuplicate })
   }
@@ -373,6 +388,15 @@ export default function RandomMatchScreen({
     const socket = getSocket()
     socket.emit('solo-queue-leave', { matchSize: quickMatchSize })
     setQuickMatchActive(false)
+    setWaitSeconds(0)
+    waitStartRef.current = null
+  }
+
+  const handleEnableAllowDuplicate = () => {
+    setAllowDuplicate(true)
+    const socket = getSocket()
+    socket.emit('solo-queue-leave', { matchSize: quickMatchSize })
+    socket.emit('solo-queue-join', { matchSize: quickMatchSize, allowDuplicate: true })
   }
 
   const handleKick = async (memberNickname: string, idx: number) => {
@@ -723,9 +747,45 @@ export default function RandomMatchScreen({
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, paddingTop: 24 }}>
             <div style={{ fontSize: '3rem', animation: 'heartSpin 1s linear infinite' }}>💘</div>
             <h3 style={{ margin: 0, fontWeight: 700 }}>매칭 대기 중...</h3>
-
             <p className="step-desc" style={{ textAlign: 'center' }}>
               {quickMatchSize}v{quickMatchSize} · 양쪽 모두 {quickMatchSize}명이 모이면 자동으로 매칭돼요
+            </p>
+
+            {/* 큐 현황 */}
+            <div className="queue-status-box">
+              <div className="queue-status-row">
+                <span className="queue-status-label">우리 팀</span>
+                <div className="queue-status-dots">
+                  {Array.from({ length: quickMatchSize }).map((_, i) => (
+                    <span key={i} className={`queue-dot ${i < queueStatus.myCount ? 'filled' : ''}`} />
+                  ))}
+                </div>
+                <span className="queue-status-count">{queueStatus.myCount}/{quickMatchSize}</span>
+              </div>
+              <div className="queue-status-row">
+                <span className="queue-status-label">상대 팀</span>
+                <div className="queue-status-dots">
+                  {Array.from({ length: quickMatchSize }).map((_, i) => (
+                    <span key={i} className={`queue-dot other ${i < queueStatus.theirCount ? 'filled' : ''}`} />
+                  ))}
+                </div>
+                <span className="queue-status-count">{queueStatus.theirCount}/{quickMatchSize}</span>
+              </div>
+            </div>
+
+            {/* 3분 이상 대기 + 중복거부 상태일 때 지연 알림 */}
+            {waitSeconds >= 180 && !allowDuplicate && (
+              <div className="match-delay-banner">
+                <p className="match-delay-text">⏳ 매칭이 지연되고 있습니다</p>
+                <p className="match-delay-sub">학과 중복을 허용하면 더 빠르게 매칭될 수 있어요!</p>
+                <button className="match-delay-btn" onClick={handleEnableAllowDuplicate}>
+                  학과 중복 허용으로 변경 💘
+                </button>
+              </div>
+            )}
+
+            <p style={{ fontSize: '0.75rem', color: '#aaa' }}>
+              대기 {Math.floor(waitSeconds / 60)}분 {waitSeconds % 60}초
             </p>
           </div>
         </>

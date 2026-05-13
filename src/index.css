@@ -1866,6 +1866,86 @@ body {
 .match-searching-text { font-size: 1.05rem; font-weight: 800; color: #262626; }
 .match-searching-sub { font-size: 0.85rem; color: #8E8E8E; }
 
+/* ── 큐 현황 ── */
+.queue-status-box {
+  width: 100%;
+  background: #f8f8f8;
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.queue-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.queue-status-label {
+  font-size: 0.82rem;
+  color: #555;
+  width: 48px;
+  flex-shrink: 0;
+}
+.queue-status-dots {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+.queue-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ddd;
+  transition: background 0.3s;
+}
+.queue-dot.filled { background: #ff6b9d; }
+.queue-dot.other.filled { background: #1a8fa0; }
+.queue-status-count {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #333;
+  width: 30px;
+  text-align: right;
+}
+
+/* ── 매칭 지연 배너 ── */
+.match-delay-banner {
+  width: 100%;
+  background: #fff8e1;
+  border: 1.5px solid #ffc107;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.match-delay-text {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #7a5c00;
+}
+.match-delay-sub {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #9a7600;
+  text-align: center;
+}
+.match-delay-btn {
+  margin-top: 4px;
+  padding: 8px 18px;
+  background: #ffc107;
+  color: #3a2c00;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.match-delay-btn:hover { background: #ffb300; }
+
 /* 매칭 성공 */
 .match-success-wrap {
   flex: 1;
@@ -2567,6 +2647,13 @@ body {
 /* 랜덤매칭 */
 .dark .match-wrap { background: #000; }
 .dark .match-title { color: #fff; }
+.dark .queue-status-box { background: #1a1a1a; }
+.dark .queue-status-label { color: #aaa; }
+.dark .queue-dot { background: #333; }
+.dark .queue-status-count { color: #e6edf3; }
+.dark .match-delay-banner { background: #2a2000; border-color: #7a5c00; }
+.dark .match-delay-text { color: #ffd54f; }
+.dark .match-delay-sub { color: #c8a600; }
 .dark .room-code-box { background: #1A1A1A; border-color: #363636; }
 .dark .room-code { color: #fff; }
 .dark .room-code-hint { color: #555; }
