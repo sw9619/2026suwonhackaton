@@ -144,24 +144,25 @@ function AppointmentModal({ onClose, onSend }: {
             </button>
           </div>
           {results.length > 0 && (
-            <div style={{ border: '1px solid #eee', borderRadius: 8, marginTop: 6, maxHeight: 180, overflowY: 'auto' }}>
+            <div className="search-results-list">
               {results.map((r, i) => (
                 <button key={i}
                   onClick={() => { setPlace(r.name); setQuery(r.name); setSelectedLat(r.lat); setSelectedLng(r.lng); setResults([]) }}
-                  style={{ width: '100%', textAlign: 'left', padding: '10px 12px', background: 'none', border: 'none', borderBottom: i < results.length - 1 ? '1px solid #f0f0f0' : 'none', cursor: 'pointer' }}>
+                  className="search-result-item"
+                  style={{ borderBottom: i < results.length - 1 ? undefined : 'none' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{r.name}</div>
-                    {r.category && <span style={{ fontSize: '0.7rem', color: '#aaa', background: '#f5f5f5', borderRadius: 4, padding: '1px 5px' }}>{r.category}</span>}
+                    {r.category && <span className="search-category-badge">{r.category}</span>}
                   </div>
-                  <div style={{ color: '#888', fontSize: '0.78rem', marginTop: 2 }}>{r.address}</div>
+                  <div className="search-address">{r.address}</div>
                 </button>
               ))}
             </div>
           )}
           {place && (
-            <div style={{ marginTop: 8, padding: '8px 12px', background: '#f0f9fa', borderRadius: 8, fontSize: '0.85rem' }}>
+            <div className="place-selected-box">
               📍 선택됨: <strong>{place}</strong>
-              <button style={{ marginLeft: 8, color: '#1a8fa0', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}
+              <button className="place-map-link"
                 onClick={() => window.open(`https://map.kakao.com/?q=${encodeURIComponent(place)}`, '_blank')}>
                 지도 보기 →
               </button>
@@ -317,28 +318,22 @@ function PickFavoriteModal({ roomId, memberDetails, currentUserId, currentNickna
           <div style={{ textAlign: 'center', padding: '16px 0' }}>
             <p style={{ fontSize: '2rem' }}>💌</p>
             <p style={{ fontWeight: 600, marginTop: 8 }}>{selected}님에게 전달됐어요!</p>
-            <p style={{ color: '#888', fontSize: '0.85rem', marginTop: 4 }}>상대방도 선택하면 1:1 대화방이 열려요.</p>
+            <p className="modal-sub-text" style={{ fontSize: '0.85rem', marginTop: 4 }}>상대방도 선택하면 1:1 대화방이 열려요.</p>
             <button className="btn-login" style={{ marginTop: 16 }} onClick={onClose}>확인</button>
           </div>
         ) : (
           <>
-            <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: 12 }}>한 명만 선택할 수 있어요. 서로 선택하면 1:1 대화방이 열려요!</p>
+            <p className="modal-sub-text" style={{ fontSize: '0.85rem', marginBottom: 12 }}>한 명만 선택할 수 있어요. 서로 선택하면 1:1 대화방이 열려요!</p>
             {candidates.length === 0 && (
-              <p style={{ color: '#aaa', textAlign: 'center', padding: '16px 0' }}>선택 가능한 상대가 없어요.</p>
+              <p className="modal-empty-text">선택 가능한 상대가 없어요.</p>
             )}
             {candidates.map(m => (
               <button key={m.id}
                 onClick={() => setSelected(m.nickname)}
-                style={{
-                  width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '12px 16px', borderRadius: '10px', marginBottom: 8,
-                  background: selected === m.nickname ? '#fff0f3' : '#f9f9f9',
-                  border: selected === m.nickname ? '1.5px solid #e84393' : '1.5px solid #eee',
-                  cursor: 'pointer',
-                }}>
+                className={`pick-candidate-btn${selected === m.nickname ? ' selected' : ''}`}>
                 <div style={{ textAlign: 'left' }}>
                   <div style={{ fontWeight: 600 }}>{m.nickname}</div>
-                  <div style={{ fontSize: '0.8rem', color: '#888' }}>{m.dept}</div>
+                  <div className="pick-candidate-dept">{m.dept}</div>
                 </div>
                 {selected === m.nickname && <span style={{ fontSize: '1.2rem' }}>❤️</span>}
               </button>
@@ -419,7 +414,7 @@ function AppointmentCard({ appt, currentUserId, totalCapacity, onAccept }: {
       </div>
       {!appt.accepted ? (
         <div>
-          <div style={{ fontSize: '0.8rem', color: '#888', margin: '8px 0', textAlign: 'center' }}>
+          <div className="appt-accept-count">
             수락 {acceptCount}/{totalCapacity}명
           </div>
           {myAccepted
@@ -712,15 +707,15 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
                 ? room.memberDetails.map(m => ({ nickname: m.nickname, dept: m.dept, gender: m.gender }))
                 : room.members.map(name => ({ nickname: name, dept: '', gender: '' }))
               ).map((m, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: m.gender === '여' ? '#ffd6e0' : '#d6e4ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>
+                <div key={i} className="member-list-item">
+                  <div className={`member-avatar ${m.gender === '여' ? 'female' : m.gender === '남' ? 'male' : ''}`}>
                     {m.gender === '여' ? '👧' : m.gender === '남' ? '👦' : '👤'}
                   </div>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '0.92rem' }}>
                       {m.nickname}{m.nickname === currentNickname ? ' (나)' : ''}
                     </div>
-                    {m.dept && <div style={{ fontSize: '0.78rem', color: '#888', marginTop: 2 }}>{m.dept}</div>}
+                    {m.dept && <div className="member-dept">{m.dept}</div>}
                   </div>
                 </div>
               ))}

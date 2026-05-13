@@ -461,7 +461,7 @@ export default function RandomMatchScreen({
             const isMe = name === currentUser.nickname
             const isThisHost = i === 0
             return (
-              <div key={i} style={{ fontSize: '0.88rem', color: '#444', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div key={i} className="team-member-row" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span>{isThisHost ? '👑' : '✓'}</span>
                 <span style={{ flex: 1 }}>{name}{isMe ? ' (나)' : ''}</span>
                 {isHostOfRoom && !isMe && (
@@ -477,7 +477,7 @@ export default function RandomMatchScreen({
             )
           })}
           {Array.from({ length: matchSize - myTeamMembers.length }).map((_, i) => (
-            <div key={i} style={{ fontSize: '0.88rem', color: '#bbb', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div key={i} className="team-member-row waiting" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span>○</span><span>대기 중...</span>
             </div>
           ))}
@@ -614,7 +614,7 @@ export default function RandomMatchScreen({
             <p style={{ color: '#aaa', fontSize: '0.85rem' }}>멤버 정보를 불러오는 중...</p>
           ) : (
             joinRoomMembers.map((name, i) => (
-              <div key={i} style={{ fontSize: '0.88rem', color: '#444', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div key={i} className="team-member-row" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span>{i === 0 ? '👑' : '✓'}</span>
                 <span>{name}{name === currentUser.nickname ? ' (나)' : ''}</span>
               </div>
@@ -744,24 +744,12 @@ function DuplicateToggle({ value, onChange }: { value: boolean; onChange: (v: bo
       <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
         <button
           onClick={() => onChange(true)}
-          style={{
-            flex: 1, padding: '10px 0', borderRadius: 10, border: '1.5px solid',
-            borderColor: value ? '#5b87ff' : '#ddd',
-            background: value ? '#eef2ff' : '#fafafa',
-            color: value ? '#3a5fcc' : '#888',
-            fontWeight: value ? 700 : 400, cursor: 'pointer', fontSize: '0.88rem',
-          }}>
+          className={`dup-toggle-btn${value ? ' allow-selected' : ''}`}>
           상관없음
         </button>
         <button
           onClick={() => onChange(false)}
-          style={{
-            flex: 1, padding: '10px 0', borderRadius: 10, border: '1.5px solid',
-            borderColor: !value ? '#ff6b9d' : '#ddd',
-            background: !value ? '#fff0f5' : '#fafafa',
-            color: !value ? '#cc2255' : '#888',
-            fontWeight: !value ? 700 : 400, cursor: 'pointer', fontSize: '0.88rem',
-          }}>
+          className={`dup-toggle-btn${!value ? ' disallow-selected' : ''}`}>
           겹치면 안 됨
         </button>
       </div>

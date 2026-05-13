@@ -988,6 +988,150 @@ body {
   flex-shrink: 0;
 }
 
+/* ── 검색 결과 / 장소 선택 ── */
+.search-results-list {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  margin-top: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.search-result-item {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  display: block;
+}
+.search-category-badge {
+  font-size: 0.7rem;
+  color: #aaa;
+  background: #f5f5f5;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.search-address {
+  color: #888;
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+.place-selected-box {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #f0f9fa;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+.place-map-link {
+  margin-left: 8px;
+  color: #1a8fa0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+/* ── 약속 카드 수락 카운트 ── */
+.appt-accept-count {
+  font-size: 0.8rem;
+  color: #888;
+  margin: 8px 0;
+  text-align: center;
+}
+
+/* ── PickFavorite 모달 ── */
+.pick-candidate-btn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  background: #f9f9f9;
+  border: 1.5px solid #eee;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.pick-candidate-btn.selected {
+  background: #fff0f3;
+  border-color: #e84393;
+}
+.pick-candidate-dept {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 2px;
+}
+.modal-sub-text { color: #888; }
+.modal-empty-text {
+  color: #aaa;
+  text-align: center;
+  padding: 16px 0;
+}
+
+/* ── 멤버 목록 모달 ── */
+.member-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.member-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+  background: #e8e8e8;
+}
+.member-avatar.female { background: #ffd6e0; }
+.member-avatar.male   { background: #d6e4ff; }
+.member-dept {
+  font-size: 0.78rem;
+  color: #888;
+  margin-top: 2px;
+}
+
+/* ── 팀원 행 (RandomMatchScreen) ── */
+.team-member-row {
+  font-size: 0.88rem;
+  color: #444;
+}
+.team-member-row.waiting { color: #bbb; }
+
+/* ── 학과 중복 토글 ── */
+.dup-toggle-btn {
+  flex: 1;
+  padding: 10px 0;
+  border-radius: 10px;
+  border: 1.5px solid #ddd;
+  background: #fafafa;
+  color: #888;
+  font-weight: 400;
+  cursor: pointer;
+  font-size: 0.88rem;
+  transition: background 0.15s, border-color 0.15s;
+}
+.dup-toggle-btn.allow-selected {
+  border-color: #5b87ff;
+  background: #eef2ff;
+  color: #3a5fcc;
+  font-weight: 700;
+}
+.dup-toggle-btn.disallow-selected {
+  border-color: #ff6b9d;
+  background: #fff0f5;
+  color: #cc2255;
+  font-weight: 700;
+}
+
 /* 인증 모달 내용 */
 .verify-info-box {
   display: flex;
@@ -2203,6 +2347,42 @@ body {
 .dark .invite-user-card { background: #1c2333; border-color: #30363d; }
 .dark .invite-user-name { color: #e6edf3; }
 .dark .invite-user-detail { color: #556070; }
+
+/* ── 검색결과 / 장소 선택 다크모드 ── */
+.dark .search-results-list { border-color: #30363d; background: #161b22; }
+.dark .search-result-item { border-color: #21262d; color: #e6edf3; }
+.dark .search-result-item:hover { background: #1c2333; }
+.dark .search-category-badge { color: #8b949e; background: #243044; }
+.dark .search-address { color: #8b949e; }
+.dark .place-selected-box { background: #1c2a3a; color: #e6edf3; }
+.dark .place-map-link { color: #87CEEB; }
+
+/* ── 약속 카드 수락 카운트 다크모드 ── */
+.dark .appt-accept-count { color: #8b949e; }
+
+/* ── PickFavorite 모달 다크모드 ── */
+.dark .pick-candidate-btn { background: #1c2333; border-color: #30363d; color: #e6edf3; }
+.dark .pick-candidate-btn.selected { background: #2a1520; border-color: #e84393; }
+.dark .pick-candidate-btn:hover { background: #243044; }
+.dark .pick-candidate-dept { color: #8b949e; }
+.dark .modal-sub-text { color: #8b949e; }
+.dark .modal-empty-text { color: #556070; }
+
+/* ── 멤버 목록 모달 다크모드 ── */
+.dark .member-list-item { border-color: #21262d; }
+.dark .member-avatar.female { background: #3a1525; }
+.dark .member-avatar.male { background: #1a2a3a; }
+.dark .member-avatar { background: #243044; }
+.dark .member-dept { color: #8b949e; }
+
+/* ── 팀원 행 다크모드 ── */
+.dark .team-member-row { color: #e6edf3; }
+.dark .team-member-row.waiting { color: #556070; }
+
+/* ── 학과 중복 토글 다크모드 ── */
+.dark .dup-toggle-btn { background: #161b22; border-color: #30363d; color: #8b949e; }
+.dark .dup-toggle-btn.allow-selected { background: #1c2a3a; border-color: #87CEEB; color: #87CEEB; }
+.dark .dup-toggle-btn.disallow-selected { background: #2a1520; border-color: #e84393; color: #ff6b9d; }
 
 /* ── 알림 ── */
 .dark .notif-panel { border-color: #21262d; }
