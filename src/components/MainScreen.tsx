@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import SettingsTab from './SettingsTab'
 import { ChatList, ChatRoomView, ChatRoom, ChatMessage, Appointment, nowTime } from './ChatScreen'
 import RandomMatchScreen, { UserProfile, MockUser, TeamState, SoloQueueState, MatchStartedPayload } from './RandomMatchScreen'
-import { api } from '../api/client'
+import { api, getStoredUser, storeUser } from '../api/client'
 import { getSocket } from '../api/socket'
 
 // 서버 방 데이터 타입
@@ -368,6 +368,8 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
 
   const handleUpdateUser = (nickname: string) => {
     setCurrentUser({ ...currentUser, nickname })
+    const stored = getStoredUser()
+    if (stored) storeUser({ ...stored, nickname })
   }
 
   const handleMutualMatch = (dmRoomId: number, title: string, otherNickname: string) => {
