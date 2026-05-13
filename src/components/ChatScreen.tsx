@@ -544,12 +544,25 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
       onMutualMatch?.(data.dmRoomId, data.title, data.otherUser.nickname)
     })
 
+    socket.on('nickname-changed', (data: { userId: number; nickname: string }) => {
+      const cur = roomRef.current
+      const updatedDetails = cur.memberDetails?.map(m =>
+        m.id === data.userId ? { ...m, nickname: data.nickname } : m
+      )
+      const updatedMembers = cur.members.map((name, i) => {
+        const detail = cur.memberDetails?.[i]
+        return detail?.id === data.userId ? data.nickname : name
+      })
+      onUpdateRoom({ ...cur, memberDetails: updatedDetails, members: updatedMembers })
+    })
+
     return () => {
       socket.off('new-message')
       socket.off('appointment-updated')
       socket.off('appointment-accepted')
       socket.off('appointment-verified')
       socket.off('mutual-match-found')
+      socket.off('nickname-changed')
       socket.emit('leave-room', room.id)
     }
   }, [room.id])

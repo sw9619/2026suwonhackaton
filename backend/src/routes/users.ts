@@ -2,6 +2,7 @@ import { Router, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import db from '../db'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
+import { getIo } from '../io'
 
 const router = Router()
 router.use(authMiddleware)
@@ -23,6 +24,13 @@ router.put('/profile', async (req: AuthRequest, res: Response) => {
   if (nickname.length > 10) return res.status(400).json({ message: '닉네임은 10자 이하여야 합니다.' })
 
   await db.run('UPDATE users SET nickname = ? WHERE id = ?', nickname, req.userId)
+
+  const rooms = await db.all<{ room_id: number }>('SELECT room_id FROM room_members WHERE user_id = ?', req.userId)
+  const io = getIo()
+  for (const room of rooms) {
+    io.to(`room:${room.room_id}`).emit('nickname-changed', { userId: req.userId, nickname })
+  }
+
   return res.json({ message: '닉네임이 수정되었습니다.', nickname })
 })
 

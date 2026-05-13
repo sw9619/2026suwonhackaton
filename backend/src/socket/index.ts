@@ -337,9 +337,13 @@ export function setupSocket(io: IOServer) {
           const { roomId, text } = data
           if (!text?.trim() || !roomId) return
 
+          const freshUser = await db.get<{ nickname: string }>('SELECT nickname FROM users WHERE id = ?', socket.userId)
+          const nickname = freshUser?.nickname ?? socket.nickname ?? '알 수 없음'
+          socket.nickname = nickname
+
           const result = await db.run(
             'INSERT INTO messages (room_id, user_id, nickname, text, type) VALUES (?, ?, ?, ?, ?)',
-            roomId, socket.userId, socket.nickname, text.trim(), 'text'
+            roomId, socket.userId, nickname, text.trim(), 'text'
           )
 
           const msg = await db.get<{
