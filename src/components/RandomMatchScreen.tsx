@@ -745,27 +745,6 @@ export default function RandomMatchScreen({
               {quickMatchSize}v{quickMatchSize} · 양쪽 모두 {quickMatchSize}명이 모이면 자동으로 매칭돼요
             </p>
 
-            {/* 큐 현황 */}
-            <div className="queue-status-box">
-              <div className="queue-status-row">
-                <span className="queue-status-label">우리 팀</span>
-                <div className="queue-status-dots">
-                  {Array.from({ length: quickMatchSize }).map((_, i) => (
-                    <span key={i} className={`queue-dot ${i < queueStatus.myCount ? 'filled' : ''}`} />
-                  ))}
-                </div>
-                <span className="queue-status-count">{queueStatus.myCount}/{quickMatchSize}</span>
-              </div>
-              <div className="queue-status-row">
-                <span className="queue-status-label">상대 팀</span>
-                <div className="queue-status-dots">
-                  {Array.from({ length: quickMatchSize }).map((_, i) => (
-                    <span key={i} className={`queue-dot other ${i < queueStatus.theirCount ? 'filled' : ''}`} />
-                  ))}
-                </div>
-                <span className="queue-status-count">{queueStatus.theirCount}/{quickMatchSize}</span>
-              </div>
-            </div>
 
 
             <p style={{ fontSize: '0.75rem', color: '#aaa' }}>
