@@ -53,7 +53,7 @@ function findCompatibleRoom(
   const oppositeGender = myGender === '남' ? '여' : '남'
   const candidates: [number, SeekingRoom][] = []
   for (const [roomId, info] of seekingRooms.entries()) {
-    if (info.capacity === capacity && info.teamGender === oppositeGender && info.memberCount === capacity) {
+    if (info.capacity === capacity && info.teamGender === oppositeGender && info.memberCount >= 1) {
       candidates.push([roomId, info])
     }
   }
@@ -205,7 +205,7 @@ export function setupSocket(io: IOServer) {
 
           const compatibleRoomId = findCompatibleRoom(capacity, myGender, myDeptSet, myAllowDuplicate)
 
-          if (compatibleRoomId !== null && myMemberCount === capacity) {
+          if (compatibleRoomId !== null && myMemberCount >= 1) {
             seekingRooms.delete(compatibleRoomId)
 
             const theirMembers = await db.all<{ id: number; nickname: string; gender: string; dept: string; email: string; student_id: string }>(`
@@ -274,7 +274,7 @@ export function setupSocket(io: IOServer) {
     socket.on('solo-queue-join', ({ matchSize, allowDuplicate }: { matchSize: number; allowDuplicate: boolean }) => {
       void (async () => {
         try {
-          if (![2, 3, 4].includes(matchSize)) return
+          if (![1, 2, 3, 4].includes(matchSize)) return
 
           const user = await db.get<{ id: number; nickname: string; gender: string; dept: string }>(
             'SELECT id, nickname, gender, dept FROM users WHERE id = ?', socket.userId
