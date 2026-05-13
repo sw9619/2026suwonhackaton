@@ -2389,6 +2389,8 @@ body {
 .plus-menu-item:hover { background: #FAFAFA; }
 .plus-menu-item.danger { color: #ED4956; }
 .plus-menu-item.danger:hover { background: #FFF5F5; }
+.plus-menu-item.disabled { color: #bbb; cursor: default; font-size: 0.88rem; }
+.plus-menu-item.disabled:hover { background: none; }
 
 /* ── Rating Modal ── */
 .rating-notice {
@@ -2706,6 +2708,7 @@ body {
 .dark .plus-menu-item:hover { background: #262626; }
 .dark .plus-menu-item.danger { color: #ED4956; }
 .dark .plus-menu-item.danger:hover { background: #2A1A1A; }
+.dark .plus-menu-item.disabled { color: #555; }
 
 /* Rating */
 .dark .rating-notice { background: #1A1A1A; border-color: #363636; color: #fff; }

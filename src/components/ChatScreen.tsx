@@ -374,8 +374,8 @@ function PickFavoriteModal({ roomId, memberDetails, currentUserId, currentNickna
   )
 }
 
-function PlusMenu({ hasAppointment, onAppt, onLeave, onClose }: {
-  hasAppointment: boolean; onAppt: () => void; onLeave: () => void; onClose: () => void
+function PlusMenu({ hasAppointment, canLeave, onAppt, onLeave, onClose }: {
+  hasAppointment: boolean; canLeave: boolean; onAppt: () => void; onLeave: () => void; onClose: () => void
 }) {
   return (
     <>
@@ -384,9 +384,15 @@ function PlusMenu({ hasAppointment, onAppt, onLeave, onClose }: {
         <button className="plus-menu-item" onClick={() => { onAppt(); onClose() }}>
           <span>📍</span><span>{hasAppointment ? '약속장소 변경하기' : '약속장소 지정'}</span>
         </button>
-        <button className="plus-menu-item danger" onClick={() => { onLeave(); onClose() }}>
-          <span>🚪</span><span>채팅방 나가기</span>
-        </button>
+        {canLeave ? (
+          <button className="plus-menu-item danger" onClick={() => { onLeave(); onClose() }}>
+            <span>🚪</span><span>채팅방 나가기</span>
+          </button>
+        ) : (
+          <div className="plus-menu-item disabled">
+            <span>🔒</span><span>채팅방 나가기 (약속 수락 후 불가)</span>
+          </div>
+        )}
       </div>
     </>
   )
@@ -699,6 +705,7 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
       {showPlus && (
         <PlusMenu
           hasAppointment={!!appt}
+          canLeave={!appt?.accepted}
           onAppt={() => setShowAppModal(true)}
           onLeave={() => setShowLeave(true)}
           onClose={() => setShowPlus(false)}
