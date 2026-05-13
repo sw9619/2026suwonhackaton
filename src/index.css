@@ -2040,6 +2040,12 @@ body {
 .dark .step-desc { color: #8b949e; }
 .dark .btn-back { color: #87CEEB; }
 .dark .btn-forgot { color: #87CEEB; }
+.dark .btn-login {
+  background: #1a8fa0;
+  color: #fff;
+  border: none;
+}
+.dark .btn-login:hover { background: #1a7d8d; opacity: 1; }
 .dark .btn-signup {
   background: #1c2333;
   border-color: #87CEEB;
@@ -2176,7 +2182,7 @@ body {
 .dark .modal-empty-text { color: #556070; }
 
 /* ── 멤버 목록 모달 다크모드 ── */
-.dark .member-list-item { border-color: #21262d; }
+.dark .member-list-item { border-color: #21262d; color: #e6edf3; }
 .dark .member-avatar.female { background: #3a1525; }
 .dark .member-avatar.male { background: #1a2a3a; }
 .dark .member-avatar { background: #243044; }
@@ -2450,8 +2456,10 @@ body {
 .dark .step-desc { color: #A8A8A8; }
 .dark .btn-back { color: #fff; }
 .dark .btn-forgot { color: #E0F1FF; }
-.dark .btn-signup { background: #000; border-color: #363636; color: #fff; }
-.dark .btn-signup:hover { background: #1A1A1A; }
+.dark .btn-login { background: #1a8fa0; color: #fff; border: none; }
+.dark .btn-login:hover { background: #1a7d8d; opacity: 1; }
+.dark .btn-signup { background: #1A1A1A; border-color: #87CEEB; color: #87CEEB; }
+.dark .btn-signup:hover { background: #263040; }
 .dark .divider { color: #555; }
 .dark .divider::before, .dark .divider::after { background: #363636; }
 
