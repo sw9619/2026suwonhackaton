@@ -394,7 +394,7 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
         </div>
       )}
       {soloQueueState && !teamState && (
-        <div onClick={handleResumeSoloQueue} style={{ position: 'fixed', bottom: 70, left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 32px)', maxWidth: 390, background: 'linear-gradient(135deg, #ff6b9d, #ff8c69)', borderRadius: 16, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.18)', zIndex: 300 }}>
+        <div onClick={handleResumeSoloQueue} style={{ position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 32px)', maxWidth: 390, background: 'linear-gradient(135deg, #ff6b9d, #ff8c69)', borderRadius: 16, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.18)', zIndex: 300 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: '1.5rem', animation: 'heartSpin 1s linear infinite' }}>💘</span>
             <div>
@@ -406,7 +406,7 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
         </div>
       )}
       {teamState && (
-        <div onClick={handleResumeTeam} style={{ position: 'fixed', bottom: 70, left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 32px)', maxWidth: 390, background: teamState.isSeeking ? 'linear-gradient(135deg, #ff6b9d, #ff8c69)' : 'linear-gradient(135deg, #5b87ff, #7b6fff)', borderRadius: 16, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.18)', zIndex: 300 }}>
+        <div onClick={handleResumeTeam} style={{ position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 32px)', maxWidth: 390, background: teamState.isSeeking ? 'linear-gradient(135deg, #ff6b9d, #ff8c69)' : 'linear-gradient(135deg, #5b87ff, #7b6fff)', borderRadius: 16, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.18)', zIndex: 300 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: '1.5rem', animation: teamState.isSeeking ? 'heartSpin 1s linear infinite' : 'none' }}>{teamState.isSeeking ? '💘' : '🏠'}</span>
             <div>
