@@ -53,7 +53,7 @@ function findCompatibleRoom(
   const oppositeGender = myGender === '남' ? '여' : '남'
   const candidates: [number, SeekingRoom][] = []
   for (const [roomId, info] of seekingRooms.entries()) {
-    if (info.capacity === capacity && info.teamGender === oppositeGender && info.memberCount >= 1) {
+    if (info.capacity === capacity && info.teamGender === oppositeGender && info.memberCount >= capacity) {
       candidates.push([roomId, info])
     }
   }
