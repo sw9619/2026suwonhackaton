@@ -724,21 +724,6 @@ export default function RandomMatchScreen({
             <div style={{ fontSize: '3rem', animation: 'heartSpin 1s linear infinite' }}>💘</div>
             <h3 style={{ margin: 0, fontWeight: 700 }}>매칭 대기 중...</h3>
 
-            <div style={{ width: '100%', background: '#f5f5f5', borderRadius: 16, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <QueueBar
-                label={`우리 팀 (${myGender}자)`}
-                count={queueStatus.myCount}
-                needed={queueStatus.needed}
-                color="#5b87ff"
-              />
-              <QueueBar
-                label={`상대 팀 (${otherGender}자)`}
-                count={queueStatus.theirCount}
-                needed={queueStatus.needed}
-                color="#ff6b9d"
-              />
-            </div>
-
             <p className="step-desc" style={{ textAlign: 'center' }}>
               {quickMatchSize}v{quickMatchSize} · 양쪽 모두 {quickMatchSize}명이 모이면 자동으로 매칭돼요
             </p>

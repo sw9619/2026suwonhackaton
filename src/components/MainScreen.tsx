@@ -129,7 +129,7 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
       memberDetails,
       ratings: {},
     }
-    setChatRooms(prev => [...prev, newRoom])
+    setChatRooms(prev => [newRoom, ...prev])
     setActiveRoom(newRoom)
     setTeamState(null)
     setSub('chatroom')
@@ -458,7 +458,7 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
             onJoin={() => setSub('random-join')}
           />
         )}
-        {tab === '채팅방' && <ChatList rooms={chatRooms} onOpenRoom={handleOpenRoom} />}
+        {tab === '채팅방' && <ChatList rooms={chatRooms} onOpenRoom={handleOpenRoom} currentUserId={currentUser.id} currentGender={currentUser.gender} />}
         {tab === '설정'  && (
           <SettingsTab
             onLogout={onLogout}

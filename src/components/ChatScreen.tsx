@@ -436,7 +436,22 @@ function AppointmentCard({ appt, currentUserId, totalCapacity, onAccept }: {
 
 // ── 채팅방 목록 ─────────────────────────────────────────────────
 
-export function ChatList({ rooms, onOpenRoom }: { rooms: ChatRoom[]; onOpenRoom: (room: ChatRoom) => void }) {
+function getRoomDisplayTitle(room: ChatRoom, currentUserId?: number, currentGender?: string): string {
+  if (room.memberDetails && room.memberDetails.length > 0) {
+    const opponents = room.memberDetails.filter(m => m.gender !== currentGender && m.id !== currentUserId)
+    if (opponents.length > 0) return opponents.map(m => m.nickname).join(', ')
+    const others = room.memberDetails.filter(m => m.id !== currentUserId)
+    if (others.length > 0) return others.map(m => m.nickname).join(', ')
+  }
+  return room.title
+}
+
+export function ChatList({ rooms, onOpenRoom, currentUserId, currentGender }: {
+  rooms: ChatRoom[]
+  onOpenRoom: (room: ChatRoom) => void
+  currentUserId?: number
+  currentGender?: string
+}) {
   return (
     <div className="chat-list-wrap">
       <h2 className="chat-list-title">채팅방</h2>
@@ -451,7 +466,7 @@ export function ChatList({ rooms, onOpenRoom }: { rooms: ChatRoom[]; onOpenRoom:
               <button key={room.id} className="chat-room-item" onClick={() => onOpenRoom(room)}>
                 <div className="chat-room-icon">💬</div>
                 <div className="chat-room-info">
-                  <span className="chat-room-name">{room.title}</span>
+                  <span className="chat-room-name">{getRoomDisplayTitle(room, currentUserId, currentGender)}</span>
                   <span className="chat-room-last">{preview}</span>
                 </div>
                 <span className="chat-room-arrow">›</span>
