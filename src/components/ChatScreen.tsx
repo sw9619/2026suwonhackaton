@@ -116,7 +116,8 @@ function AppointmentModal({ onClose, onSend }: {
     setSearching(true)
     try {
       let url = `/places/search?q=${encodeURIComponent(searchQ)}`
-      if (userPos) url += `&lat=${userPos.lat}&lng=${userPos.lng}`
+      const pos = userPosRef.current
+      if (pos) url += `&lat=${pos.lat}&lng=${pos.lng}`
       const data = await api.get<{ places: { name: string; address: string; category?: string; categoryDetail?: string; phone?: string; lat?: number; lng?: number; distance?: number }[] }>(url)
       setResults(data.places)
     } catch {
