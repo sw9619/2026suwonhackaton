@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import SettingsTab from './SettingsTab'
-import { ChatList, ChatRoomView, ChatRoom, ChatMessage, Appointment } from './ChatScreen'
+import { ChatList, ChatRoomView, ChatRoom, ChatMessage, Appointment, nowTime } from './ChatScreen'
 import RandomMatchScreen, { UserProfile, MockUser, TeamState, SoloQueueState, MatchStartedPayload } from './RandomMatchScreen'
 import { api } from '../api/client'
 import { getSocket } from '../api/socket'
@@ -84,10 +84,6 @@ interface Props {
   onToggleDarkMode: () => void
 }
 
-function nowTime() {
-  const d = new Date()
-  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
-}
 
 export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset, currentUser, setCurrentUser, darkMode, onToggleDarkMode }: Props) {
   const [tab, setTab]           = useState<Tab>('과팅')
@@ -108,6 +104,8 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
   const subValueRef = useRef<SubScreen>(null)
   useEffect(() => { subValueRef.current = sub }, [sub])
   const joinedRoomIds = useRef(new Set<number>())
+  const currentUserIdRef = useRef<number | undefined>(currentUser.id)
+  useEffect(() => { currentUserIdRef.current = currentUser.id }, [currentUser.id])
 
   const handleMatchSuccess = (matchedUsers: MockUser[], size: number, roomId?: number) => {
     showMatchNotification()
@@ -265,21 +263,50 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
     }
   }, [chatRooms])
 
-  // 글로벌 new-message 리스너: 안 읽은 메시지 카운트 + 브라우저 알림
+  // 글로벌 new-message 리스너: 모든 방 메시지 처리 (ChatRoomView 대신 여기서 전담)
   useEffect(() => {
     const socket = getSocket()
     const onNewMessage = (msg: { id: number; roomId: number; text: string; senderName: string; userId: number; time: string; type: string }) => {
       const isActiveRoom = subValueRef.current === 'chatroom' && activeRoomIdRef.current === msg.roomId
-      if (isActiveRoom) return
-      setUnreadCounts(prev => ({ ...prev, [msg.roomId]: (prev[msg.roomId] ?? 0) + 1 }))
-      if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && !document.hasFocus()) {
-        try {
-          const room = chatRoomsRef.current.find(r => r.id === msg.roomId)
-          new Notification(`💬 ${room?.title ?? '새 메시지'}`, {
-            body: `${msg.senderName}: ${msg.text}`,
-            icon: '/favicon.ico',
-          })
-        } catch { /* ignore */ }
+
+      const newMsg: ChatMessage = {
+        id: msg.id,
+        text: msg.text,
+        isMine: msg.userId === currentUserIdRef.current,
+        senderName: msg.senderName,
+        time: nowTime(),  // 클라이언트 현재 시간 사용 (서버 UTC 시간 무시)
+        userId: msg.userId,
+        isAppointment: msg.type === 'appointment',
+      }
+
+      // chatRooms 업데이트 (미리보기 + 최상단 이동)
+      setChatRooms(prev => {
+        const room = prev.find(r => r.id === msg.roomId)
+        if (!room) return prev
+        if (room.messages.some(m => m.id === msg.id)) return prev  // 중복 방지
+        const updated = { ...room, messages: [...room.messages, newMsg] }
+        return [updated, ...prev.filter(r => r.id !== msg.roomId)]
+      })
+
+      // 활성 채팅방이면 activeRoom도 업데이트해서 화면에 즉시 반영
+      if (isActiveRoom) {
+        setActiveRoom(prev => {
+          if (!prev || prev.id !== msg.roomId) return prev
+          if (prev.messages.some(m => m.id === msg.id)) return prev
+          return { ...prev, messages: [...prev.messages, newMsg] }
+        })
+      } else {
+        // 비활성 방: 안 읽은 수 + 브라우저 알림
+        setUnreadCounts(prev => ({ ...prev, [msg.roomId]: (prev[msg.roomId] ?? 0) + 1 }))
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && !document.hasFocus()) {
+          try {
+            const room = chatRoomsRef.current.find(r => r.id === msg.roomId)
+            new Notification(`💬 ${room?.title ?? '새 메시지'}`, {
+              body: `${msg.senderName}: ${msg.text}`,
+              icon: '/favicon.ico',
+            })
+          } catch { /* ignore */ }
+        }
       }
     }
     socket.on('new-message', onNewMessage)
@@ -313,6 +340,7 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
     const msg: ChatMessage = {
       id: Date.now(), text, isMine: true,
       senderName: currentUser.nickname, time: nowTime(),
+      userId: currentUser.id,
     }
     const updated = { ...activeRoom, messages: [...activeRoom.messages, msg] }
     setChatRooms(prev => [updated, ...prev.filter(r => r.id !== updated.id)])

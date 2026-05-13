@@ -44,7 +44,7 @@ export interface ChatRoom {
   myLike?: string
 }
 
-function nowTime() {
+export function nowTime() {
   const d = new Date()
   return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
 }
@@ -530,17 +530,6 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     const socket = getSocket()
     socket.emit('join-room', room.id)
 
-    const onNewMessage = (msg: { id: number; roomId?: number; text: string; senderName: string; userId: number; time: string; type: string }) => {
-      const newMsg: ChatMessage = {
-        id: msg.id, text: msg.text,
-        isMine: msg.userId === currentUserId,
-        senderName: msg.senderName, time: msg.time,
-        userId: msg.userId, isAppointment: msg.type === 'appointment',
-      }
-      const cur = roomRef.current
-      onUpdateRoom({ ...cur, messages: [...cur.messages, newMsg] })
-    }
-
     const onAppointmentUpdated = (data: { place: string; datetimeISO: string; acceptedBy: number[]; verifiedBy: number[]; accepted: boolean; verified: boolean }) => {
       const apptMsg: ChatMessage = { id: Date.now(), text: '', isMine: false, time: nowTime(), isAppointment: true }
       const cur = roomRef.current
@@ -581,7 +570,6 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
       onUpdateRoom({ ...cur, memberDetails: updatedDetails, members: updatedMembers })
     }
 
-    socket.on('new-message', onNewMessage)
     socket.on('appointment-updated', onAppointmentUpdated)
     socket.on('appointment-accepted', onAppointmentAccepted)
     socket.on('appointment-verified', onAppointmentVerified)
@@ -589,7 +577,6 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     socket.on('nickname-changed', onNicknameChanged)
 
     return () => {
-      socket.off('new-message', onNewMessage)
       socket.off('appointment-updated', onAppointmentUpdated)
       socket.off('appointment-accepted', onAppointmentAccepted)
       socket.off('appointment-verified', onAppointmentVerified)
@@ -652,11 +639,7 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     if (!input.trim()) return
     const socket = getSocket()
     socket.emit('send-message', { roomId: room.id, text: input.trim() })
-    const msg: ChatMessage = {
-      id: Date.now(), text: input.trim(), isMine: true,
-      senderName: currentNickname, time: nowTime(), userId: currentUserId,
-    }
-    onUpdateRoom({ ...room, messages: [...room.messages, msg] })
+    onSend(input.trim())  // MainScreen의 최신 activeRoom으로 optimistic update
     setInput('')
   }
 
