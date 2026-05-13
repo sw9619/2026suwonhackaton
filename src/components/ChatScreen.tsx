@@ -519,6 +519,11 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     [...room.messages].reverse().find(m => m.isAppointment)?.id
   , [room.messages])
 
+  // 약속 시간 + 4시간 이후에만 마음에 드는 상태 선택 가능
+  const pickUnlockTime = appt ? new Date(new Date(appt.datetimeISO).getTime() + 4 * 60 * 60 * 1000) : null
+  const canPick = pickUnlockTime ? Date.now() >= pickUnlockTime.getTime() : false
+  const pickCountdown = pickUnlockTime ? timeUntilText(pickUnlockTime.toISOString()) : null
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView()
   }, [])
@@ -659,11 +664,11 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     rightBtn = (
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <span className="btn-verified-header">✓ 인증완료</span>
-        {!room.myLike && (
-          <button className="btn-verify-header" style={{ fontSize: '0.75rem', padding: '4px 8px' }} onClick={() => setShowPick(true)}>
-            ❤️ 선택
-          </button>
+        {!room.myLike && (canPick
+          ? <button className="btn-verify-header" style={{ fontSize: '0.75rem', padding: '4px 8px' }} onClick={() => setShowPick(true)}>❤️ 선택</button>
+          : pickCountdown && <span style={{ fontSize: '0.68rem', color: '#aaa', whiteSpace: 'nowrap' }}>{pickCountdown} 후 선택</span>
         )}
+        {room.myLike && <span style={{ fontSize: '0.75rem', color: '#ff6b9d' }}>❤️ 선택완료</span>}
       </div>
     )
   }
