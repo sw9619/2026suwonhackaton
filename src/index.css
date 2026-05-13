@@ -1078,6 +1078,14 @@ body {
   border-radius: 4px;
   padding: 1px 5px;
 }
+.search-distance-badge {
+  font-size: 0.7rem;
+  color: #1a8fa0;
+  background: #e8f7f9;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-weight: 600;
+}
 .search-address {
   color: #888;
   font-size: 0.78rem;
@@ -2166,6 +2174,7 @@ body {
 .dark .search-result-item { border-color: #21262d; color: #e6edf3; }
 .dark .search-result-item:hover { background: #1c2333; }
 .dark .search-category-badge { color: #8b949e; background: #243044; }
+.dark .search-distance-badge { color: #87CEEB; background: #1a2a3a; }
 .dark .search-address { color: #8b949e; }
 .dark .place-selected-box { background: #1c2a3a; color: #e6edf3; }
 .dark .place-map-link { color: #87CEEB; }

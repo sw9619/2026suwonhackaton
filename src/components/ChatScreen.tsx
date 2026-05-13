@@ -86,31 +86,41 @@ function AppointmentModal({ onClose, onSend }: {
   onSend: (place: string, dt: Date, lat?: number, lng?: number) => void
 }) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<{ name: string; address: string; category?: string; lat?: number; lng?: number }[]>([])
+  const [results, setResults] = useState<{ name: string; address: string; category?: string; lat?: number; lng?: number; distance?: number }[]>([])
   const [searching, setSearching] = useState(false)
   const [place, setPlace] = useState('')
   const [selectedLat, setSelectedLat] = useState<number | undefined>()
   const [selectedLng, setSelectedLng] = useState<number | undefined>()
   const [dateStr, setDateStr] = useState('')
   const [timeStr, setTimeStr] = useState('')
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null)
   const canSend = place.trim() && dateStr && timeStr
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {}
+      )
+    }
+  }, [])
 
   const searchPlace = useCallback(async (q?: string) => {
     const searchQ = (q ?? query).trim()
     if (!searchQ) return
     setSearching(true)
     try {
-      const data = await api.get<{ places: { name: string; address: string; category?: string; lat?: number; lng?: number }[] }>(
-        `/places/search?q=${encodeURIComponent(searchQ)}`
-      )
+      let url = `/places/search?q=${encodeURIComponent(searchQ)}`
+      if (userPos) url += `&lat=${userPos.lat}&lng=${userPos.lng}`
+      const data = await api.get<{ places: { name: string; address: string; category?: string; lat?: number; lng?: number; distance?: number }[] }>(url)
       setResults(data.places)
     } catch {
       setResults([])
     } finally {
       setSearching(false)
     }
-  }, [query])
+  }, [query, userPos])
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
@@ -151,9 +161,16 @@ function AppointmentModal({ onClose, onSend }: {
                   onClick={() => { setPlace(r.name); setQuery(r.name); setSelectedLat(r.lat); setSelectedLng(r.lng); setResults([]) }}
                   className="search-result-item"
                   style={{ borderBottom: i < results.length - 1 ? undefined : 'none' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{r.name}</div>
-                    {r.category && <span className="search-category-badge">{r.category}</span>}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+                      {r.category && <span className="search-category-badge">{r.category}</span>}
+                      {r.distance !== undefined && (
+                        <span className="search-distance-badge">
+                          {r.distance < 1 ? `${Math.round(r.distance * 1000)}m` : `${r.distance.toFixed(1)}km`}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="search-address">{r.address}</div>
                 </button>
