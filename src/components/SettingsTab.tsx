@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { api } from '../api/client'
 import { UserProfile } from './RandomMatchScreen'
 
@@ -20,6 +20,10 @@ export default function SettingsTab({ onLogout, onAccountDeleted, onPasswordRese
 
   // 프로필
   const [nickname, setNickname] = useState(currentUser.nickname)
+
+  useEffect(() => {
+    setNickname(currentUser.nickname)
+  }, [currentUser.nickname])
   const [nicknameError, setNicknameError] = useState('')
   const [nicknameSaved, setNicknameSaved] = useState(false)
 
