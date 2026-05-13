@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 export interface ChatMessage {
   id: number
@@ -62,56 +62,14 @@ function canRate(appt?: Appointment) {
 }
 
 // ── 약속 설정 모달 ──
-interface PlaceResult { name: string; address: string }
-
 function AppointmentModal({ onClose, onSend }: {
   onClose: () => void
   onSend: (place: string, dt: Date) => void
 }) {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<PlaceResult[]>([])
-  const [searching, setSearching] = useState(false)
   const [place, setPlace] = useState('')
   const [dateStr, setDateStr] = useState('')
   const [timeStr, setTimeStr] = useState('')
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const canSend = place.trim() && dateStr && timeStr
-
-  const searchPlace = useCallback(async (q: string) => {
-    const trimmed = q.trim()
-    if (!trimmed) return
-    setSearching(true)
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(trimmed + ' 수원')}&format=jsonv2&limit=10&countrycodes=kr&accept-language=ko&addressdetails=1`
-      const resp = await fetch(url, { headers: { 'User-Agent': 'SuwonSignal/1.0' } })
-      const data = await resp.json() as { name: string; display_name: string; class: string; type: string }[]
-      const places = data
-        .filter(d => d.name && d.class !== 'boundary' && d.type !== 'administrative')
-        .map(d => {
-          const parts = d.display_name.split(', ')
-          const addr = parts.slice(1).filter(p => !p.match(/^\d+/) && p !== '대한민국' && p.length < 20).slice(0, 3).join(' ')
-          return { name: d.name, address: addr }
-        })
-        .filter((p, i, arr) => arr.findIndex(x => x.name === p.name) === i)
-      setResults(places)
-    } catch {
-      setResults([])
-    } finally {
-      setSearching(false)
-    }
-  }, [])
-
-  const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    setQuery(val)
-    setPlace('')
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (val.trim().length >= 2) {
-      timerRef.current = setTimeout(() => searchPlace(val), 500)
-    } else {
-      setResults([])
-    }
-  }
 
   return (
     <div className="modal-overlay">
@@ -121,36 +79,14 @@ function AppointmentModal({ onClose, onSend }: {
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="input-group">
-          <label>장소 검색</label>
+          <label>장소</label>
           <div className="place-row">
-            <input
-              className="pw-input"
-              placeholder="카페, 식당, 장소명 입력..."
-              value={query}
-              onChange={handleQueryChange}
-              onKeyDown={e => e.key === 'Enter' && searchPlace(query)}
-            />
-            <button className="btn-map-icon" onClick={() => searchPlace(query)} disabled={searching}>
-              {searching ? '⏳' : '🔍'}
+            <input className="pw-input" placeholder="장소 이름 입력" value={place} onChange={e => setPlace(e.target.value)} />
+            <button className="btn-map-icon"
+              onClick={() => place.trim() && window.open(`https://map.kakao.com/?q=${encodeURIComponent(place.trim())}`, '_blank')}>
+              🗺️
             </button>
           </div>
-          {results.length > 0 && (
-            <div style={{ border: '1px solid #eee', borderRadius: 8, marginTop: 6, maxHeight: 180, overflowY: 'auto' }}>
-              {results.map((r, i) => (
-                <button key={i}
-                  onClick={() => { setPlace(r.name); setQuery(r.name); setResults([]) }}
-                  style={{ width: '100%', textAlign: 'left', padding: '10px 12px', background: 'none', border: 'none', borderBottom: i < results.length - 1 ? '1px solid #f0f0f0' : 'none', cursor: 'pointer' }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{r.name}</div>
-                  <div style={{ color: '#888', fontSize: '0.78rem', marginTop: 2 }}>{r.address}</div>
-                </button>
-              ))}
-            </div>
-          )}
-          {place && (
-            <div style={{ marginTop: 8, padding: '8px 12px', background: '#f0f9fa', borderRadius: 8, fontSize: '0.85rem' }}>
-              📍 선택됨: <strong>{place}</strong>
-            </div>
-          )}
         </div>
         <div className="input-group">
           <label>날짜</label>
