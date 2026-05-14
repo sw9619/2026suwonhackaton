@@ -571,7 +571,7 @@ export default function RandomMatchScreen({
             {otherGender}자팀이 준비되면<br />자동으로 매칭돼요!
           </p>
           <p style={{ fontSize: '0.8rem', color: '#aaa', textAlign: 'center', marginTop: -8 }}>
-            다른 앱을 써도 돼요. 매칭되면 알림으로 알려드려요 🔔
+            이 탭을 열어두면 매칭이 계속 진행돼요
           </p>
           {isHostOfRoom && (
             <button className="btn-signup" onClick={() => setShowCancelConfirm(true)} style={{ marginTop: 8, width: '100%' }}>
@@ -745,7 +745,7 @@ export default function RandomMatchScreen({
           <DuplicateToggle value={allowDuplicate} onChange={setAllowDuplicate} />
 
               <p className="step-desc" style={{ fontSize: '0.78rem', color: '#aaa', textAlign: 'center', marginTop: -4 }}>
-            매칭 시작 후 다른 앱을 써도 돼요.<br />매칭되면 알림으로 알려드려요 🔔
+            매칭되는 동안 이 탭을 열어두세요.<br />다른 탭을 써도 매칭은 계속돼요 💡
           </p>
           <button className="btn-login" onClick={handleStartQuickMatch}>
             빠른 매칭 시작 💘
