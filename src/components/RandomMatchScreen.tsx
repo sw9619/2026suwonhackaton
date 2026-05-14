@@ -96,6 +96,7 @@ export default function RandomMatchScreen({
   const [joinRoomCapacity, setJoinRoomCapacity] = useState(teamStateResume?.matchSize ?? 0)
   const [joinRoomHostId, setJoinRoomHostId] = useState<number>(0)
   const [result, setResult]     = useState<MatchResult | null>(null)
+  const [pendingMatchData, setPendingMatchData] = useState<{ matchedUsers: MockUser[]; size: number; roomId?: number } | null>(null)
   const [loading, setLoading]   = useState(false)
   const [kickingIdx, setKickingIdx] = useState<number | null>(null)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
@@ -137,17 +138,17 @@ export default function RandomMatchScreen({
   })
 
   const processMatchResult = useCallback((data: MatchStartedPayload) => {
-    // 브라우저 알림
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       try { new Notification('💘 매칭 완료!', { body: '상대팀과 매칭되었어요! 채팅방을 확인해보세요.', icon: '/favicon.ico' }) } catch { /* ignore */ }
     }
     const myTeam    = data.members.filter(m => m.gender === myGender).map(toMockUser)
     const otherTeam = data.members.filter(m => m.gender !== myGender).map(toMockUser)
     setResult({ myTeam, otherTeam, size: data.size })
-    setView('result')
     const others = data.members.filter(m => m.id !== currentUser.id).map(toMockUser)
-    onMatchSuccess(others, data.size, data.roomId)
-  }, [currentUser, onMatchSuccess, myGender])
+    // 결과 화면을 먼저 보여주고, 사용자가 버튼 클릭 후 채팅방으로 이동
+    setPendingMatchData({ matchedUsers: others, size: data.size, roomId: data.roomId })
+    setView('result')
+  }, [currentUser, myGender])
 
   // 빠른 매칭 소켓
   useEffect(() => {
@@ -679,7 +680,9 @@ export default function RandomMatchScreen({
         ))}
       </div>
 
-      <button className="btn-login" onClick={onBack}>채팅방 확인하기</button>
+      <button className="btn-login" onClick={() => {
+        if (pendingMatchData) onMatchSuccess(pendingMatchData.matchedUsers, pendingMatchData.size, pendingMatchData.roomId)
+      }}>채팅방 확인하기 💬</button>
     </div>
   )
 
@@ -747,6 +750,10 @@ export default function RandomMatchScreen({
 
 
 
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <QueueBar label={`${myGender}자 (우리)`} count={queueStatus.myCount} needed={queueStatus.needed} color="#ff6b9d" />
+              <QueueBar label={`${otherGender}자 (상대)`} count={queueStatus.theirCount} needed={queueStatus.needed} color="#5b87ff" />
+            </div>
             <p style={{ fontSize: '0.75rem', color: '#aaa' }}>
               대기 {Math.floor(waitSeconds / 60)}분 {waitSeconds % 60}초
             </p>

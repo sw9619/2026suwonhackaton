@@ -108,6 +108,10 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
   useEffect(() => { currentUserIdRef.current = currentUser.id }, [currentUser.id])
 
   const handleMatchSuccess = (matchedUsers: MockUser[], size: number, roomId?: number) => {
+    // 첫 매칭 시점에 알림 권한 요청 (앱 진입 즉시보다 허용률 높음)
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
     showMatchNotification()
     const t = nowTime()
     const members = [currentUser.nickname, ...matchedUsers.map(u => u.nickname)]
@@ -146,9 +150,6 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
 
   // 앱 초기화: 알림 권한 요청, 상태 복원, 채팅방 로드
   useEffect(() => {
-    // 브라우저 알림 권한 요청
-    if ('Notification' in window) Notification.requestPermission()
-
     // 매칭 상태 localStorage 복원
     try {
       const t = localStorage.getItem('sws_teamState')
@@ -372,24 +373,31 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
     if (stored) storeUser({ ...stored, nickname })
   }
 
-  const handleMutualMatch = (dmRoomId: number, title: string, otherNickname: string) => {
-    const newRoom: ChatRoom = {
-      id: dmRoomId,
-      title,
-      messages: [],
-      capacity: 2,
-      memberCount: 2,
-      members: [currentUser.nickname, otherNickname],
-      ratings: {},
+  const handleMutualMatch = useCallback(async (dmRoomId: number, title: string, otherNickname: string) => {
+    try {
+      const data = await api.get<{ room: ServerRoom }>(`/rooms/${dmRoomId}`, true)
+      const loaded = serverRoomToChatRoom(data.room, currentUser.id!)
+      setChatRooms(prev => {
+        if (prev.some(r => r.id === dmRoomId)) return prev
+        return [loaded, ...prev]
+      })
+      setActiveRoom(loaded)
+      getSocket().emit('join-room', dmRoomId)
+      joinedRoomIds.current.add(dmRoomId)
+    } catch {
+      const newRoom: ChatRoom = {
+        id: dmRoomId, title, messages: [], capacity: 2, memberCount: 2,
+        members: [currentUser.nickname, otherNickname], ratings: {},
+      }
+      setChatRooms(prev => {
+        if (prev.some(r => r.id === dmRoomId)) return prev
+        return [newRoom, ...prev]
+      })
+      setActiveRoom(newRoom)
     }
-    setChatRooms(prev => {
-      if (prev.some(r => r.id === dmRoomId)) return prev
-      return [newRoom, ...prev]
-    })
-    setActiveRoom(newRoom)
     setSub('chatroom')
     setTab('채팅방')
-  }
+  }, [currentUser])
 
   const handleGoToMain = useCallback((state: TeamState) => {
     setTeamState(state)
@@ -492,10 +500,17 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
             <span style={{ fontSize: '1.5rem', animation: teamState.isSeeking ? 'heartSpin 1s linear infinite' : 'none' }}>{teamState.isSeeking ? '💘' : '🏠'}</span>
             <div>
               <p style={{ margin: 0, fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>{teamState.isSeeking ? '매칭 중...' : '팀 대기 중'}</p>
-              <p style={{ margin: 0, color: 'rgba(255,255,255,0.85)', fontSize: '0.78rem' }}>코드 {teamState.roomCode} · {teamState.matchSize}v{teamState.matchSize} · 탭해서 돌아가기</p>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.85)', fontSize: '0.78rem' }}>{teamState.matchSize}v{teamState.matchSize} · 탭해서 돌아가기</p>
             </div>
           </div>
-          <button style={{ background: 'rgba(255,255,255,0.22)', border: 'none', color: '#fff', borderRadius: 8, padding: '5px 12px', fontSize: '0.78rem', cursor: 'pointer', flexShrink: 0 }} onClick={e => { e.stopPropagation(); setShowTeamCancelConfirm(true) }}>나가기</button>
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <button style={{ background: 'rgba(255,255,255,0.22)', border: 'none', color: '#fff', borderRadius: 8, padding: '5px 10px', fontSize: '0.78rem', cursor: 'pointer' }}
+              onClick={e => { e.stopPropagation(); navigator.clipboard?.writeText(teamState.roomCode).catch(() => {}) }}
+              title="코드 복사">
+              📋 {teamState.roomCode}
+            </button>
+            <button style={{ background: 'rgba(255,255,255,0.22)', border: 'none', color: '#fff', borderRadius: 8, padding: '5px 10px', fontSize: '0.78rem', cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setShowTeamCancelConfirm(true) }}>나가기</button>
+          </div>
         </div>
       )}
     </>
@@ -534,7 +549,7 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
             onJoin={() => setSub('random-join')}
           />
         )}
-        {tab === '채팅방' && <ChatList rooms={chatRooms} onOpenRoom={handleOpenRoom} currentUserId={currentUser.id} currentGender={currentUser.gender} unreadCounts={unreadCounts} />}
+        {tab === '채팅방' && <ChatList rooms={chatRooms} onOpenRoom={handleOpenRoom} currentUserId={currentUser.id} currentGender={currentUser.gender} unreadCounts={unreadCounts} bannerVisible={!!(soloQueueState || teamState)} />}
         {tab === '설정'  && (
           <SettingsTab
             onLogout={onLogout}

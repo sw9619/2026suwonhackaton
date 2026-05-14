@@ -185,6 +185,15 @@ function AppointmentModal({ onClose, onSend }: {
               ))}
             </div>
           )}
+          {!place && query.trim().length >= 2 && !searching && (
+            <button
+              className="search-result-item"
+              style={{ marginTop: 4, color: '#888', fontSize: '0.85rem', borderRadius: 8, border: '1px dashed #ccc', background: 'none', width: '100%', textAlign: 'left', padding: '8px 10px' }}
+              onClick={() => { setPlace(query.trim()); setSelectedLat(undefined); setSelectedLng(undefined); setResults([]) }}
+            >
+              ✏️ "{query.trim()}" 직접 입력하기
+            </button>
+          )}
           {place && (
             <div className="place-selected-box">
               📍 선택됨: <strong>{place}</strong>
@@ -197,7 +206,9 @@ function AppointmentModal({ onClose, onSend }: {
         </div>
         <div className="input-group">
           <label>날짜</label>
-          <input type="date" className="pw-input" value={dateStr} onChange={e => setDateStr(e.target.value)} />
+          <input type="date" className="pw-input" value={dateStr}
+            min={new Date().toISOString().split('T')[0]}
+            onChange={e => setDateStr(e.target.value)} />
         </div>
         <div className="input-group">
           <label>시간</label>
@@ -477,15 +488,16 @@ function getRoomDisplayTitle(room: ChatRoom, currentUserId?: number, currentGend
   return room.title
 }
 
-export function ChatList({ rooms, onOpenRoom, currentUserId, currentGender, unreadCounts }: {
+export function ChatList({ rooms, onOpenRoom, currentUserId, currentGender, unreadCounts, bannerVisible }: {
   rooms: ChatRoom[]
   onOpenRoom: (room: ChatRoom) => void
   currentUserId?: number
   currentGender?: string
   unreadCounts?: Record<number, number>
+  bannerVisible?: boolean
 }) {
   return (
-    <div className="chat-list-wrap">
+    <div className="chat-list-wrap" style={bannerVisible ? { paddingBottom: 88 } : {}}>
       <h2 className="chat-list-title">채팅방</h2>
       {rooms.length === 0 ? (
         <div className="chat-empty">참여한 채팅방이 없어요.<br />채팅방을 만들거나 참여해보세요!</div>

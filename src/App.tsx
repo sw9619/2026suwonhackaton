@@ -23,7 +23,13 @@ function userInfoToProfile(u: UserInfo): UserProfile {
 export default function App() {
   const [screen, setScreen] = useState<Screen>('splash')
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null)
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(() => {
+    try { return localStorage.getItem('sws_darkMode') === 'true' } catch { return false }
+  })
+
+  useEffect(() => {
+    try { localStorage.setItem('sws_darkMode', darkMode ? 'true' : 'false') } catch {}
+  }, [darkMode])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -45,7 +51,7 @@ export default function App() {
 
   const handleSignupComplete = (user: UserInfo) => {
     setCurrentUser(userInfoToProfile(user))
-    setScreen('login')
+    setScreen('main')
   }
 
   const handleLogout = () => {
