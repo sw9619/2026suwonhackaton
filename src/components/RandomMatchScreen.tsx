@@ -170,6 +170,10 @@ export default function RandomMatchScreen({
     if (soloStateResume) {
       socket.emit('solo-queue-join', { matchSize: soloStateResume.matchSize, allowDuplicate: soloStateResume.allowDuplicate })
     }
+    // 백그라운드 대기 안내를 위한 알림 권한 요청
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
 
     return () => {
       socket.off('solo-queue-status', onStatus)
@@ -227,6 +231,11 @@ export default function RandomMatchScreen({
     socket.on('kicked-from-room', onKicked)
     socket.on('room-closed', onRoomClosed)
     socket.on('match-error', onMatchError)
+
+    // 백그라운드 매칭 대기 알림 권한
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
 
     return () => {
       socket.off('member-joined', onMemberJoined)
@@ -562,7 +571,7 @@ export default function RandomMatchScreen({
             {otherGender}자팀이 준비되면<br />자동으로 매칭돼요!
           </p>
           <p style={{ fontSize: '0.8rem', color: '#aaa', textAlign: 'center', marginTop: -8 }}>
-            채팅방을 이용하려면 상단의 '메인화면으로'를 탭하세요
+            다른 앱을 써도 돼요. 매칭되면 알림으로 알려드려요 🔔
           </p>
           {isHostOfRoom && (
             <button className="btn-signup" onClick={() => setShowCancelConfirm(true)} style={{ marginTop: 8, width: '100%' }}>
@@ -735,6 +744,9 @@ export default function RandomMatchScreen({
           </div>
           <DuplicateToggle value={allowDuplicate} onChange={setAllowDuplicate} />
 
+              <p className="step-desc" style={{ fontSize: '0.78rem', color: '#aaa', textAlign: 'center', marginTop: -4 }}>
+            매칭 시작 후 다른 앱을 써도 돼요.<br />매칭되면 알림으로 알려드려요 🔔
+          </p>
           <button className="btn-login" onClick={handleStartQuickMatch}>
             빠른 매칭 시작 💘
           </button>

@@ -108,10 +108,6 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
   useEffect(() => { currentUserIdRef.current = currentUser.id }, [currentUser.id])
 
   const handleMatchSuccess = (matchedUsers: MockUser[], size: number, roomId?: number) => {
-    // 첫 매칭 시점에 알림 권한 요청 (앱 진입 즉시보다 허용률 높음)
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission()
-    }
     showMatchNotification()
     const t = nowTime()
     const members = [currentUser.nickname, ...matchedUsers.map(u => u.nickname)]
