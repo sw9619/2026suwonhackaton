@@ -28,6 +28,8 @@ type SoloUser = {
 
 const seekingRooms = new Map<number, SeekingRoom>()
 const soloQueue = new Map<string, SoloUser[]>()
+// socketId → roomId: disconnect 시 유령 방 정리용
+const socketSeekingRoom = new Map<string, number>()
 
 function makeCode() {
   return String(Math.floor(100000 + Math.random() * 900000))
@@ -432,6 +434,7 @@ export function setupSocket(io: IOServer) {
                   capacity, teamGender: myGender, memberCount: myMemberCount,
                   deptSet: myDeptSet, allowDuplicate: myAllowDuplicate, timestamp: Date.now(),
                 })
+                socketSeekingRoom.set(socket.id, roomId)
                 await db.run("UPDATE rooms SET status = 'seeking' WHERE id = ?", roomId)
                 io.to(`room:${roomId}`).emit('match-seeking', { roomId, memberCount: myMemberCount })
 
@@ -450,6 +453,7 @@ export function setupSocket(io: IOServer) {
       void (async () => {
         try {
           seekingRooms.delete(roomId)
+          socketSeekingRoom.delete(socket.id)
           await db.run("UPDATE rooms SET status = 'waiting' WHERE id = ?", roomId)
           console.log(`[Socket] 팀매칭 취소: room${roomId}`)
         } catch (err) {
@@ -473,7 +477,10 @@ export function setupSocket(io: IOServer) {
           const key = `${matchSize}-${user.gender}`
           const queue = soloQueue.get(key) ?? []
 
-          if (queue.find(u => u.userId === socket.userId)) {
+          const existingIdx = queue.findIndex(u => u.userId === socket.userId)
+          if (existingIdx >= 0) {
+            // allowDuplicate 변경 시 큐 내 기존 항목 업데이트
+            queue[existingIdx].allowDuplicate = allowDuplicate !== false
             const oppositeGender = user.gender === '남' ? '여' : '남'
             const theirQueue = soloQueue.get(`${matchSize}-${oppositeGender}`) ?? []
             socket.emit('solo-queue-status', { myCount: queue.length, theirCount: theirQueue.length, needed: matchSize })
@@ -572,9 +579,20 @@ export function setupSocket(io: IOServer) {
     })
 
     socket.on('disconnect', () => {
+      // soloQueue에서 제거
       for (const [key, queue] of soloQueue.entries()) {
         const next = queue.filter(u => u.userId !== socket.userId)
         if (next.length !== queue.length) soloQueue.set(key, next)
+      }
+      // 이 소켓이 방장이었던 seekingRoom 제거 (유령 방 방지)
+      const seekingRoomId = socketSeekingRoom.get(socket.id)
+      if (seekingRoomId) {
+        seekingRooms.delete(seekingRoomId)
+        socketSeekingRoom.delete(socket.id)
+        void db.run("UPDATE rooms SET status = 'closed' WHERE id = ?", seekingRoomId)
+          .then(() => io.to(`room:${seekingRoomId}`).emit('room-closed'))
+          .catch(() => {})
+        console.log(`[Socket] 유령 방 정리: room${seekingRoomId} (방장 disconnect)`)
       }
       console.log(`[Socket] 해제: ${socket.nickname}`)
     })
