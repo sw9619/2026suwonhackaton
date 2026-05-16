@@ -43,6 +43,7 @@ export interface ChatRoom {
   memberDetails?: MemberDetail[]
   ratings: Record<string, number>
   myLike?: string
+  myRatings?: Record<number, number>
 }
 
 export function nowTime() {
@@ -226,29 +227,30 @@ function AppointmentModal({ onClose, onSend }: {
 // ── 만남 인증 모달 ─────────────────────────────────────────────
 
 function VerifyModal({ appointment, onVerify, onClose }: {
-  appointment: Appointment; onVerify: () => void; onClose: () => void
+  appointment: Appointment; onVerify: (pos: { lat: number; lng: number }) => void; onClose: () => void
 }) {
-  const [step, setStep] = useState<'checking' | 'ready' | 'early' | 'far' | 'done'>('checking')
+  const [step, setStep] = useState<'checking' | 'ready' | 'early' | 'far' | 'done' | 'gps-denied' | 'no-coords'>('checking')
   const [distanceM, setDistanceM] = useState<number | null>(null)
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null)
 
   useEffect(() => {
     if (!isWithinWindow(appointment.datetimeISO)) { setStep('early'); return }
-
-    if (!navigator.geolocation) { setStep('ready'); return }
+    if (!navigator.geolocation) { setStep('gps-denied'); return }
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude: userLat, longitude: userLng } = pos.coords
+        setUserPos({ lat: userLat, lng: userLng })
         if (appointment.lat && appointment.lng) {
           const distKm = distanceKm(userLat, userLng, appointment.lat, appointment.lng)
           const dm = Math.round(distKm * 1000)
           setDistanceM(dm)
           setStep(distKm <= 0.5 ? 'ready' : 'far')
         } else {
-          setStep('ready')
+          setStep('no-coords')
         }
       },
-      () => setStep('ready'),
+      () => setStep('gps-denied'),
       { timeout: 5000 }
     )
   }, [])
@@ -273,6 +275,13 @@ function VerifyModal({ appointment, onVerify, onClose }: {
           </div>
         </div>
         {step === 'checking' && <div className="verify-status">📡 위치를 확인하고 있어요...</div>}
+        {step === 'gps-denied' && (
+          <div className="verify-status error">
+            📵 위치 권한이 거부되었어요.<br />
+            만남 인증을 위해 위치 권한이 필요해요.<br />
+            창을 닫고 만남 인증을 다시 눌러주세요.
+          </div>
+        )}
         {step === 'early' && (
           <div className="verify-status error">
             {remaining ? `아직 약속 시간이 아니에요!\n${remaining} 후에 다시 시도해주세요.`
@@ -290,12 +299,18 @@ function VerifyModal({ appointment, onVerify, onClose }: {
             </button>
           </>
         )}
+        {step === 'no-coords' && (
+          <div className="verify-status error">
+            📍 약속 장소 좌표 정보가 없어요.<br />
+            약속 장소를 다시 설정해주세요.
+          </div>
+        )}
         {step === 'ready' && (
           <>
             <div className="verify-status ok">
-              {distanceM !== null ? `📍 약속 장소 ${distanceM}m 근처에 있어요!` : '📍 위치 확인 완료! 인증할 수 있어요.'}
+              📍 약속 장소 {distanceM}m 근처에 있어요!
             </div>
-            <button className="btn-login" onClick={() => { onVerify(); setStep('done') }}>인증하기</button>
+            <button className="btn-login" onClick={() => { if (userPos) { onVerify(userPos); setStep('done') } }}>인증하기</button>
           </>
         )}
         {step === 'done' && <div className="verify-done">✅ 인증되었습니다!</div>}
@@ -306,37 +321,65 @@ function VerifyModal({ appointment, onVerify, onClose }: {
 
 // ── 좋아요 선택 모달 ────────────────────────────────────────────
 
-function PickFavoriteModal({ roomId, memberDetails, currentUserId, currentNickname, currentGender, myLike, onClose, onPicked }: {
+function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div style={{ display: 'flex', gap: 4 }}>
+      {[1, 2, 3, 4, 5].map(n => (
+        <button key={n} onClick={() => onChange(n)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.4rem', padding: 0, color: n <= value ? '#f5a623' : '#ccc' }}>
+          {n <= value ? '★' : '☆'}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function PickFavoriteModal({ roomId, memberDetails, currentUserId, currentGender, myLike, myRatings, canRate, onClose, onPicked }: {
   roomId: number
   memberDetails?: MemberDetail[]
   currentUserId?: number
-  currentNickname?: string
   currentGender?: string
   myLike?: string
+  myRatings?: Record<number, number>
+  canRate: boolean
   onClose: () => void
-  onPicked: (nickname: string) => void
+  onPicked: (nickname: string, ratings: Record<number, number>) => void
 }) {
   const [selected, setSelected] = useState(myLike ?? '')
+  const [liked, setLiked] = useState(!!myLike)
+  const [ratings, setRatings] = useState<Record<number, number>>(myRatings ?? {})
   const [loading, setLoading] = useState(false)
-  const [done, setDone] = useState(!!myLike)
 
-  const candidates = (memberDetails ?? []).filter(m =>
+  const likeCandidates = (memberDetails ?? []).filter(m =>
     m.id !== currentUserId && (!currentGender || m.gender !== currentGender)
   )
+  const ratingCandidates = (memberDetails ?? []).filter(m => m.id !== currentUserId)
 
   const handleConfirm = async () => {
-    const detail = candidates.find(d => d.nickname === selected)
-    if (!detail) return
     setLoading(true)
     try {
-      const res = await api.post<{ matched: boolean; dmRoomId?: number; title?: string }>(
-        `/rooms/${roomId}/like`, { likeeId: detail.id }, true
-      )
-      setDone(true)
-      onPicked(selected)
-      if (res.matched && res.dmRoomId) {
-        setTimeout(() => alert(`💌 서로 선택했어요! "${res.title}" 채팅방이 열렸어요.`), 100)
+      if (selected && !liked) {
+        const detail = likeCandidates.find(d => d.nickname === selected)
+        if (detail) {
+          const res = await api.post<{ matched: boolean; dmRoomId?: number; title?: string }>(
+            `/rooms/${roomId}/like`, { likeeId: detail.id }, true
+          )
+          setLiked(true)
+          if (res.matched && res.dmRoomId) {
+            setTimeout(() => alert(`💌 서로 선택했어요! "${res.title}" 채팅방이 열렸어요.`), 100)
+          }
+        }
       }
+
+      if (canRate) {
+        const ratingPayload = Object.entries(ratings).map(([id, stars]) => ({ rateeId: Number(id), stars }))
+        if (ratingPayload.length > 0) {
+          await api.post(`/rooms/${roomId}/ratings`, { ratings: ratingPayload }, true)
+        }
+      }
+
+      onPicked(selected, ratings)
+      onClose()
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : '실패했습니다.')
     } finally {
@@ -348,25 +391,17 @@ function PickFavoriteModal({ roomId, memberDetails, currentUserId, currentNickna
     <div className="modal-overlay">
       <div className="modal-box">
         <div className="modal-header">
-          <h3 className="modal-title">❤️ 맘에 드는 상대</h3>
+          <h3 className="modal-title">❤️ 맘에 드는 상대 & ⭐ 별점</h3>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
-        {done ? (
-          <div style={{ textAlign: 'center', padding: '16px 0' }}>
-            <p style={{ fontSize: '2rem' }}>💌</p>
-            <p style={{ fontWeight: 600, marginTop: 8 }}>{selected}님에게 전달됐어요!</p>
-            <p className="modal-sub-text" style={{ fontSize: '0.85rem', marginTop: 4 }}>상대방도 선택하면 1:1 대화방이 열려요.</p>
-            <button className="btn-login" style={{ marginTop: 16 }} onClick={onClose}>확인</button>
-          </div>
-        ) : (
+
+        {likeCandidates.length > 0 && (
           <>
-            <p className="modal-sub-text" style={{ fontSize: '0.85rem', marginBottom: 12 }}>한 명만 선택할 수 있어요. 서로 선택하면 1:1 대화방이 열려요!</p>
-            {candidates.length === 0 && (
-              <p className="modal-empty-text">선택 가능한 상대가 없어요.</p>
-            )}
-            {candidates.map(m => (
-              <button key={m.id}
-                onClick={() => setSelected(m.nickname)}
+            <p className="modal-sub-text" style={{ fontSize: '0.85rem', marginBottom: 8 }}>
+              {liked ? `💌 ${selected}님에게 전달됐어요!` : '한 명만 선택할 수 있어요. 서로 선택하면 1:1 대화방이 열려요!'}
+            </p>
+            {!liked && likeCandidates.map(m => (
+              <button key={m.id} onClick={() => setSelected(m.nickname)}
                 className={`pick-candidate-btn${selected === m.nickname ? ' selected' : ''}`}>
                 <div style={{ textAlign: 'left' }}>
                   <div style={{ fontWeight: 600 }}>{m.nickname}</div>
@@ -375,11 +410,25 @@ function PickFavoriteModal({ roomId, memberDetails, currentUserId, currentNickna
                 {selected === m.nickname && <span style={{ fontSize: '1.2rem' }}>❤️</span>}
               </button>
             ))}
-            <button className="btn-login" disabled={!selected || loading} onClick={handleConfirm} style={{ marginTop: 4 }}>
-              {loading ? '처리 중...' : '선택 완료'}
-            </button>
           </>
         )}
+
+        <p className="modal-sub-text" style={{ fontSize: '0.85rem', margin: '12px 0 8px' }}>⭐ 멤버 별점 주기</p>
+        {!canRate ? (
+          <p style={{ fontSize: '0.85rem', color: '#aaa', textAlign: 'center', padding: '8px 0' }}>별점 기한이 지났어요. (미팅 후 3일 이내)</p>
+        ) : ratingCandidates.map(m => (
+          <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{m.nickname}</div>
+              <div style={{ fontSize: '0.75rem', color: '#aaa' }}>{m.dept}</div>
+            </div>
+            <StarRating value={ratings[m.id] ?? 0} onChange={v => setRatings(prev => ({ ...prev, [m.id]: v }))} />
+          </div>
+        ))}
+
+        <button className="btn-login" disabled={loading} onClick={handleConfirm} style={{ marginTop: 8 }}>
+          {loading ? '처리 중...' : '완료'}
+        </button>
       </div>
     </div>
   )
@@ -570,6 +619,10 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
   const canPick = pickUnlockTime ? Date.now() >= pickUnlockTime.getTime() : false
   const pickCountdown = pickUnlockTime ? timeUntilText(pickUnlockTime.toISOString()) : null
 
+  // 별점은 약속 시간 + 3일까지만 가능
+  const ratingDeadline = appt ? new Date(new Date(appt.datetimeISO).getTime() + 3 * 24 * 60 * 60 * 1000) : null
+  const canRate = canPick && (ratingDeadline ? Date.now() < ratingDeadline.getTime() : false)
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView()
   }, [])
@@ -668,10 +721,10 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     }
   }
 
-  const handleVerify = async () => {
+  const handleVerify = async (pos: { lat: number; lng: number }) => {
     try {
       const result = await api.put<{ verifiedBy: number[] }>(
-        `/rooms/${room.id}/appointment/verify`, {}, true
+        `/rooms/${room.id}/appointment/verify`, { lat: pos.lat, lng: pos.lng }, true
       )
       if (appt) onUpdateRoom({ ...room, appointment: { ...appt, verifiedBy: result.verifiedBy, verified: true } })
     } catch (e: unknown) {
@@ -679,8 +732,8 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     }
   }
 
-  const handlePicked = (nickname: string) => {
-    onUpdateRoom({ ...room, myLike: nickname })
+  const handlePicked = (nickname: string, ratings: Record<number, number>) => {
+    onUpdateRoom({ ...room, myLike: nickname || room.myLike, myRatings: { ...room.myRatings, ...ratings } })
   }
 
   const handleSend = () => {
@@ -703,11 +756,12 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     rightBtn = (
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <span className="btn-verified-header">✓ 인증완료</span>
-        {!room.myLike && (canPick
-          ? <button className="btn-verify-header" style={{ fontSize: '0.75rem', padding: '4px 8px' }} onClick={() => setShowPick(true)}>❤️ 선택</button>
+        {canPick
+          ? <button className="btn-verify-header" style={{ fontSize: '0.75rem', padding: '4px 8px' }} onClick={() => setShowPick(true)}>
+              {room.myLike ? '❤️ 선택완료' : '❤️ 선택 & ⭐ 별점'}
+            </button>
           : pickCountdown && <span style={{ fontSize: '0.68rem', color: '#aaa', whiteSpace: 'nowrap' }}>{pickCountdown} 후 선택</span>
-        )}
-        {room.myLike && <span style={{ fontSize: '0.75rem', color: '#ff6b9d' }}>❤️ 선택완료</span>}
+        }
       </div>
     )
   }
@@ -732,9 +786,10 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
           roomId={room.id}
           memberDetails={room.memberDetails}
           currentUserId={currentUserId}
-          currentNickname={currentNickname}
           currentGender={currentGender}
           myLike={room.myLike}
+          myRatings={room.myRatings}
+          canRate={canRate}
           onClose={() => setShowPick(false)}
           onPicked={handlePicked}
         />

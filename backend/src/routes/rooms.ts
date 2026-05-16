@@ -143,7 +143,16 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
     const verifiedBy = appointment ? (await db.all<{ user_id: number }>('SELECT user_id FROM appointment_verifies WHERE room_id = ?', roomId)).map(r => r.user_id) : []
     const apptData = appointment ? { ...appointment, acceptedBy, verifiedBy } : undefined
 
-    return res.json({ room: { ...room, teamGender: room.team_gender, hostId: room.host_id, members, memberCount: members.length, messages, appointment: apptData } })
+    const myLikeRow = await db.get<{ nickname: string }>(
+      'SELECT u.nickname FROM likes l JOIN users u ON u.id = l.likee_id WHERE l.room_id = ? AND l.liker_id = ?',
+      roomId, req.userId
+    )
+    const myRatingRows = await db.all<{ ratee_id: number; stars: number }>(
+      'SELECT ratee_id, stars FROM ratings WHERE room_id = ? AND rater_id = ?', roomId, req.userId
+    )
+    const myRatings = myRatingRows.reduce((acc, r) => ({ ...acc, [r.ratee_id]: r.stars }), {} as Record<number, number>)
+
+    return res.json({ room: { ...room, teamGender: room.team_gender, hostId: room.host_id, members, memberCount: members.length, messages, appointment: apptData, myLikee: myLikeRow?.nickname, myRatings } })
   } catch (e) {
     console.error('[GET /rooms/:id]', e)
     return res.status(500).json({ message: '방 정보 조회에 실패했습니다.' })
@@ -293,11 +302,34 @@ router.put('/:id/appointment/accept', async (req: AuthRequest, res: Response) =>
   }
 })
 
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
 // 만남 인증
 router.put('/:id/appointment/verify', async (req: AuthRequest, res: Response) => {
   try {
     const roomId = parseInt(req.params.id)
     const userId = req.userId!
+    const { lat, lng } = req.body as { lat?: number; lng?: number }
+
+    const appointment = await db.get<{ lat?: number; lng?: number }>(
+      'SELECT lat, lng FROM appointments WHERE room_id = ?', roomId
+    )
+
+    if (appointment?.lat && appointment?.lng) {
+      if (lat == null || lng == null) {
+        return res.status(400).json({ message: '위치 정보가 필요합니다. GPS를 허용해주세요.' })
+      }
+      const distKm = haversineKm(lat, lng, appointment.lat, appointment.lng)
+      if (distKm > 0.5) {
+        return res.status(400).json({ message: `약속 장소에서 너무 멀어요! (${Math.round(distKm * 1000)}m)` })
+      }
+    }
 
     await db.run('INSERT OR IGNORE INTO appointment_verifies (room_id, user_id) VALUES (?, ?)', roomId, userId)
 
@@ -311,6 +343,30 @@ router.put('/:id/appointment/verify', async (req: AuthRequest, res: Response) =>
   } catch (e) {
     console.error('[PUT /rooms/:id/appointment/verify]', e)
     return res.status(500).json({ message: '만남 인증에 실패했습니다.' })
+  }
+})
+
+// 별점 저장
+router.post('/:id/ratings', async (req: AuthRequest, res: Response) => {
+  try {
+    const roomId = parseInt(req.params.id)
+    const raterId = req.userId!
+    const { ratings } = req.body as { ratings: Array<{ rateeId: number; stars: number }> }
+    if (!Array.isArray(ratings)) return res.status(400).json({ message: 'ratings 배열이 필요합니다.' })
+
+    for (const { rateeId, stars } of ratings) {
+      if (rateeId === raterId || stars < 1 || stars > 5) continue
+      await db.run(
+        `INSERT INTO ratings (room_id, rater_id, ratee_id, stars) VALUES (?, ?, ?, ?)
+         ON CONFLICT (room_id, rater_id, ratee_id) DO UPDATE SET stars = EXCLUDED.stars`,
+        roomId, raterId, rateeId, stars
+      )
+    }
+
+    return res.json({ message: '별점이 저장되었습니다.' })
+  } catch (e) {
+    console.error('[POST /rooms/:id/ratings]', e)
+    return res.status(500).json({ message: '별점 저장에 실패했습니다.' })
   }
 })
 

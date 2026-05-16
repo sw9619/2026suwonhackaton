@@ -88,7 +88,7 @@ async function createMatchRoomAndNotify(
   gender: string,
   myTeam: { userId: number }[],
   theirTeam: { userId: number }[]
-) {
+): Promise<number> {
   const allIds = [...myTeam, ...theirTeam].map(u => u.userId)
   const allDetails = (await Promise.all(
     allIds.map(id => db.get<{ id: number; nickname: string; gender: string; dept: string; email: string; student_id: string }>(
@@ -118,7 +118,21 @@ async function createMatchRoomAndNotify(
   for (const id of allIds) {
     io.to(`user:${id}`).emit('match-started', payload)
   }
-  console.log(`[Socket] 빠른매칭 성사: ${matchSize}v${matchSize} → room${matchRoomId}`)
+  console.log(`[Socket] 매칭 성사: ${matchSize}v${matchSize} → room${matchRoomId}`)
+  return matchRoomId
+}
+
+async function buildMatchPayload(
+  matchRoomId: number,
+  matchSize: number,
+  gender: string
+): Promise<{ roomId: number; members: unknown[]; size: number; teamGender: string } | null> {
+  const members = await db.all<{ id: number; nickname: string; gender: string; dept: string; email: string; student_id: string }>(
+    'SELECT u.id, u.nickname, u.gender, u.dept, u.email, u.student_id FROM room_members rm JOIN users u ON u.id = rm.user_id WHERE rm.room_id = ?',
+    matchRoomId
+  )
+  if (!members.length) return null
+  return { roomId: matchRoomId, members, size: matchSize, teamGender: gender }
 }
 
 async function tryCreateSoloMatch(io: IOServer, matchSize: number, gender: string) {
@@ -191,12 +205,17 @@ async function tryMatchRoomWithSoloQueue(
   soloQueue.set(key, queue.filter(u => !matchedIds.has(u.userId)))
   await db.run("UPDATE rooms SET status = 'closed' WHERE id = ?", roomId)
 
-  await createMatchRoomAndNotify(io, roomCapacity, roomGender,
+  const matchRoomId = await createMatchRoomAndNotify(io, roomCapacity, roomGender,
     roomMembers.map(m => ({ userId: m.id })),
     matched.map(u => ({ userId: u.userId }))
   )
+  // 솔로 큐 팀에게도 room 채널로 알림 (백그라운드 핸들러 타이밍 이슈 보완 불필요하지만 일관성)
+  if (matchRoomId) {
+    const payload = await buildMatchPayload(matchRoomId, roomCapacity, roomGender)
+    if (payload) io.to(`room:${roomId}`).emit('match-started', payload)
+  }
   broadcastQueueStatus(io, roomCapacity, oppositeGender)
-  console.log(`[Socket] 크로스매칭 (방→솔로): room${roomId} + 솔로 ${matched.length}명`)
+  console.log(`[Socket] 크로스매칭 성사 (방→솔로): room${roomId} + 솔로 ${matched.length}명`)
   return true
 }
 
@@ -237,10 +256,17 @@ async function tryFillAndMatchRoom(
       compatibleRoomId
     )
     await db.run("UPDATE rooms SET status = 'closed' WHERE id = ? OR id = ?", roomId, compatibleRoomId)
-    await createMatchRoomAndNotify(io, capacity, roomGender,
+    const mixedMatchRoomId1 = await createMatchRoomAndNotify(io, capacity, roomGender,
       combinedMembers.map(m => ({ userId: m.id })),
       theirMembers.map(m => ({ userId: m.id }))
     )
+    if (mixedMatchRoomId1) {
+      const payload = await buildMatchPayload(mixedMatchRoomId1, capacity, roomGender)
+      if (payload) {
+        io.to(`room:${roomId}`).emit('match-started', payload)
+        io.to(`room:${compatibleRoomId}`).emit('match-started', payload)
+      }
+    }
     broadcastQueueStatus(io, capacity, roomGender)
     console.log(`[Socket] 혼합매칭 (방+솔로→방): room${roomId} + 솔로${needed}명 vs room${compatibleRoomId}`)
     return true
@@ -268,10 +294,14 @@ async function tryFillAndMatchRoom(
         seekingRooms.delete(roomId)
 
         await db.run("UPDATE rooms SET status = 'closed' WHERE id = ?", roomId)
-        await createMatchRoomAndNotify(io, capacity, roomGender,
+        const mixedMatchRoomId2 = await createMatchRoomAndNotify(io, capacity, roomGender,
           combinedMembers.map(m => ({ userId: m.id })),
           theirTeam.map(u => ({ userId: u.userId }))
         )
+        if (mixedMatchRoomId2) {
+          const payload = await buildMatchPayload(mixedMatchRoomId2, capacity, roomGender)
+          if (payload) io.to(`room:${roomId}`).emit('match-started', payload)
+        }
         broadcastQueueStatus(io, capacity, roomGender)
         broadcastQueueStatus(io, capacity, oppositeGender)
         console.log(`[Socket] 혼합매칭 (방+솔로→솔로큐): room${roomId} + 솔로${needed}명 vs 솔로${capacity}명`)
@@ -306,15 +336,21 @@ async function tryMatchSoloQueueWithRoom(
   }
   candidates.sort((a, b) => a[1].timestamp - b[1].timestamp)
 
+  console.log(`[Socket] 크로스매칭 시도 (솔로→방): 솔로 ${myQueue.length}명(${gender}) vs 대기방 ${candidates.length}개`)
+
   for (const [roomId, roomInfo] of candidates) {
-    const myDeptSet = new Set(myQueue.map(u => u.dept))
-    const myAllowDuplicate = myQueue.every(u => u.allowDuplicate)
+    // 실제 매칭될 팀원만으로 학과 중복 체크 (버그 수정: 큐 전체가 아닌 매칭 대상만)
+    const myTeam = myQueue.slice(0, matchSize)
+    const myDeptSet = new Set(myTeam.map(u => u.dept))
+    const myAllowDuplicate = myTeam.every(u => u.allowDuplicate)
     if (!canMatch(
       { deptSet: myDeptSet, allowDuplicate: myAllowDuplicate },
       { deptSet: roomInfo.deptSet, allowDuplicate: roomInfo.allowDuplicate }
-    )) continue
+    )) {
+      console.log(`[Socket] 크로스매칭 학과 중복으로 스킵: room${roomId}`)
+      continue
+    }
 
-    const myTeam = myQueue.slice(0, Math.min(myQueue.length, matchSize))
     const matchedIds = new Set(myTeam.map(u => u.userId))
     soloQueue.set(key, myQueue.filter(u => !matchedIds.has(u.userId)))
     seekingRooms.delete(roomId)
@@ -324,12 +360,17 @@ async function tryMatchSoloQueueWithRoom(
       'SELECT u.id FROM room_members rm JOIN users u ON u.id = rm.user_id WHERE rm.room_id = ?',
       roomId
     )
-    await createMatchRoomAndNotify(io, matchSize, gender,
+    const matchRoomId = await createMatchRoomAndNotify(io, matchSize, gender,
       myTeam.map(u => ({ userId: u.userId })),
       roomMemberIds.map(m => ({ userId: m.id }))
     )
+    // 방 기반 팀의 room 채널로도 알림 (백그라운드 핸들러 타이밍 이슈 보완)
+    if (matchRoomId) {
+      const payload = await buildMatchPayload(matchRoomId, matchSize, gender)
+      if (payload) io.to(`room:${roomId}`).emit('match-started', payload)
+    }
     broadcastQueueStatus(io, matchSize, gender)
-    console.log(`[Socket] 크로스매칭 (솔로→방): 솔로 ${myTeam.length}명 + room${roomId}`)
+    console.log(`[Socket] 크로스매칭 성사 (솔로→방): 솔로 ${myTeam.length}명 + room${roomId}`)
     return true
   }
   return false

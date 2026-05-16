@@ -18,6 +18,7 @@ interface ServerRoom {
   id: number; title: string; capacity: number; teamGender: string; status: string; hostId: number
   members: { id: number; nickname: string; gender: string; dept: string; email: string; student_id: string }[]
   memberCount: number; messages: ServerMessage[]; appointment?: ServerAppointment
+  myLikee?: string; myRatings?: Record<number, number>
 }
 
 function serverRoomToChatRoom(r: ServerRoom, currentUserId: number): ChatRoom {
@@ -47,7 +48,8 @@ function serverRoomToChatRoom(r: ServerRoom, currentUserId: number): ChatRoom {
     memberCount: r.memberCount,
     members: r.members.map(m => m.nickname),
     memberDetails: r.members,
-    ratings: {},
+    ratings: r.myRatings ?? {},
+    myLike: r.myLikee,
     appointment,
   }
 }

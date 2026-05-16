@@ -111,7 +111,16 @@ router.get('/me/rooms', async (req: AuthRequest, res: Response) => {
       const verifiedBy = appointment ? (await db.all<{ user_id: number }>('SELECT user_id FROM appointment_verifies WHERE room_id = ?', room.id)).map(r => r.user_id) : []
       const apptData = appointment ? { ...appointment, acceptedBy, verifiedBy } : undefined
 
-      return { ...room, members, memberCount: members.length, messages, appointment: apptData }
+      const myLikeRow = await db.get<{ nickname: string }>(
+        'SELECT u.nickname FROM likes l JOIN users u ON u.id = l.likee_id WHERE l.room_id = ? AND l.liker_id = ?',
+        room.id, req.userId
+      )
+      const myRatingRows = await db.all<{ ratee_id: number; stars: number }>(
+        'SELECT ratee_id, stars FROM ratings WHERE room_id = ? AND rater_id = ?', room.id, req.userId
+      )
+      const myRatings = myRatingRows.reduce((acc, r) => ({ ...acc, [r.ratee_id]: r.stars }), {} as Record<number, number>)
+
+      return { ...room, members, memberCount: members.length, messages, appointment: apptData, myLikee: myLikeRow?.nickname, myRatings }
     }))
 
     return res.json({ rooms: result })
