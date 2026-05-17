@@ -111,37 +111,36 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
 
   const handleMatchSuccess = (matchedUsers: MockUser[], size: number, roomId?: number) => {
     showMatchNotification()
-    const t = nowTime()
-    const members = [currentUser.nickname, ...matchedUsers.map(u => u.nickname)]
-    const memberIds: Record<string, number> = {}
-    matchedUsers.forEach(u => { if (u.id) memberIds[u.nickname] = u.id })
-
-    const memberDetails = [
-      { id: currentUser.id!, nickname: currentUser.nickname, gender: currentUser.gender, dept: currentUser.dept },
-      ...matchedUsers.map(u => ({ id: u.id!, nickname: u.nickname, gender: u.gender, dept: u.dept })),
-    ]
-
-    const systemMsg: ChatMessage = {
-      id: Date.now(),
-      text: `🎉 ${size}v${size} 매칭이 완료되었어요!`,
-      isMine: false,
-      senderName: '시스템',
-      time: t,
-    }
-    const newRoom: ChatRoom = {
-      id: roomId ?? Date.now() + 1000,
-      title: `${size}v${size} 매칭`,
-      messages: [systemMsg],
-      capacity: size * 2,
-      memberCount: size * 2,
-      members,
-      memberIds,
-      memberDetails,
-      ratings: {},
-    }
-    setChatRooms(prev => [newRoom, ...prev])
-    setActiveRoom(newRoom)
     setTeamState(null)
+    setSoloQueueState(null)
+
+    if (roomId) {
+      api.get<{ room: ServerRoom }>(`/rooms/${roomId}`, true)
+        .then(data => {
+          const loaded = serverRoomToChatRoom(data.room, currentUser.id!)
+          setChatRooms(prev => [loaded, ...prev.filter(r => r.id !== roomId)])
+          setActiveRoom(loaded)
+          getSocket().emit('join-room', roomId)
+          joinedRoomIds.current.add(roomId)
+        })
+        .catch(() => {
+          const t = nowTime()
+          const members = [currentUser.nickname, ...matchedUsers.map(u => u.nickname)]
+          const memberDetails = [
+            { id: currentUser.id!, nickname: currentUser.nickname, gender: currentUser.gender, dept: currentUser.dept },
+            ...matchedUsers.map(u => ({ id: u.id!, nickname: u.nickname, gender: u.gender, dept: u.dept })),
+          ]
+          const fallbackRoom: ChatRoom = {
+            id: roomId,
+            title: `${size}v${size} 과팅`,
+            messages: [{ id: Date.now(), text: `🎉 ${size}v${size} 매칭이 완료되었어요!`, isMine: false, senderName: '시스템', time: t }],
+            capacity: size * 2, memberCount: size * 2, members, memberDetails, ratings: {},
+          }
+          setChatRooms(prev => [fallbackRoom, ...prev.filter(r => r.id !== roomId)])
+          setActiveRoom(fallbackRoom)
+        })
+    }
+
     setSub('chatroom')
     setTab('채팅방')
   }
