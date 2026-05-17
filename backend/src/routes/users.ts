@@ -73,6 +73,7 @@ router.delete('/me', async (req: AuthRequest, res: Response) => {
       await db.run('DELETE FROM pending_appointments WHERE room_id = ?', room.id)
       await db.run('DELETE FROM appointment_accepts WHERE room_id = ?', room.id)
       await db.run('DELETE FROM appointment_verifies WHERE room_id = ?', room.id)
+      await db.run('DELETE FROM room_kicks WHERE room_id = ?', room.id)
       await db.run('DELETE FROM likes WHERE room_id = ?', room.id)
       await db.run('DELETE FROM ratings WHERE room_id = ?', room.id)
       await db.run('DELETE FROM appointments WHERE room_id = ?', room.id)
