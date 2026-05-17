@@ -307,8 +307,26 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
         }
       }
     }
+    const onNicknameChanged = (data: { userId: number; nickname: string }) => {
+      const updateRoom = (room: ChatRoom): ChatRoom => {
+        const oldMember = room.memberDetails?.find(m => m.id === data.userId)
+        if (!oldMember) return room
+        return {
+          ...room,
+          members: room.members.map(m => m === oldMember.nickname ? data.nickname : m),
+          memberDetails: room.memberDetails!.map(m => m.id === data.userId ? { ...m, nickname: data.nickname } : m),
+        }
+      }
+      setChatRooms(prev => prev.map(updateRoom))
+      setActiveRoom(prev => prev ? updateRoom(prev) : null)
+    }
+
     socket.on('new-message', onNewMessage)
-    return () => { socket.off('new-message', onNewMessage) }
+    socket.on('nickname-changed', onNicknameChanged)
+    return () => {
+      socket.off('new-message', onNewMessage)
+      socket.off('nickname-changed', onNicknameChanged)
+    }
   }, [])
 
   const handleGoToMainSolo = useCallback((state: SoloQueueState) => {
@@ -365,9 +383,19 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
   }
 
   const handleUpdateUser = (nickname: string) => {
+    const userId = currentUser.id
+    const oldNickname = currentUser.nickname
     setCurrentUser({ ...currentUser, nickname })
     const stored = getStoredUser()
     if (stored) storeUser({ ...stored, nickname })
+
+    const updateRoomNickname = (room: ChatRoom): ChatRoom => ({
+      ...room,
+      members: room.members.map(m => m === oldNickname ? nickname : m),
+      memberDetails: room.memberDetails?.map(m => m.id === userId ? { ...m, nickname } : m),
+    })
+    setChatRooms(prev => prev.map(updateRoomNickname))
+    setActiveRoom(prev => prev ? updateRoomNickname(prev) : null)
   }
 
   const handleMutualMatch = useCallback(async (dmRoomId: number, title: string, otherNickname: string) => {
