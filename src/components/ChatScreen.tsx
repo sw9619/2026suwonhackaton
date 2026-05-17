@@ -554,36 +554,37 @@ function AppointmentCard({ appt, currentUserId, totalCapacity, onAccept, isCurre
   )
 }
 
-// ── 약속 변경 제안 바 ────────────────────────────────────────────
+// ── 약속 변경 제안 카드 ──────────────────────────────────────────
 
-function PendingApptBar({ pending, currentUserId, totalCapacity, onAccept, onCancel }: {
+function PendingApptCard({ pending, currentUserId, totalCapacity, onAccept }: {
   pending: PendingAppointment
   currentUserId?: number
   totalCapacity: number
   onAccept: () => void
-  onCancel: () => void
 }) {
   const myAccepted = currentUserId ? pending.acceptedBy.includes(currentUserId) : false
-  const isProposer = currentUserId === pending.proposedBy
+  const acceptCount = pending.acceptedBy.length
 
   return (
-    <div className="pending-appt-bar">
-      <div className="pending-appt-bar-header">
-        <span className="pending-appt-bar-title">📍 약속 장소 변경 제안</span>
-        <span className="pending-appt-bar-count">{pending.acceptedBy.length}/{totalCapacity}명 수락</span>
+    <div className="appt-card appt-card-pending">
+      <div className="appt-card-title">📍 약속장소 변경 제안</div>
+      <div className="appt-card-row">
+        <span className="appt-card-icon">📍</span>
+        <span className="appt-card-text">{pending.place}</span>
+        <button className="btn-map-small"
+          onClick={() => window.open(`https://map.kakao.com/?q=${encodeURIComponent(pending.place)}`, '_blank')}>
+          지도
+        </button>
       </div>
-      <div className="pending-appt-bar-place">{pending.place}</div>
-      <div className="pending-appt-bar-time">{formatDatetime(pending.datetimeISO)}</div>
-      <div className="pending-appt-bar-actions">
-        {myAccepted ? (
-          <div className="appt-accepted" style={{ flex: 1, textAlign: 'left', fontSize: '0.82rem' }}>✅ 수락 완료</div>
-        ) : (
-          <button className="btn-accept" style={{ flex: 1, marginTop: 0 }} onClick={onAccept}>수락하기</button>
-        )}
-        {isProposer && (
-          <button className="btn-reject" onClick={onCancel}>제안 취소</button>
-        )}
+      <div className="appt-card-row">
+        <span className="appt-card-icon">🕐</span>
+        <span className="appt-card-text">{formatDatetime(pending.datetimeISO)}</span>
       </div>
+      <div className="appt-accept-count">수락 {acceptCount}/{totalCapacity}명</div>
+      {myAccepted
+        ? <div className="appt-accepted">✅ 수락 완료 ({acceptCount}/{totalCapacity}명 수락)</div>
+        : <button className="btn-accept" onClick={onAccept}>수락하기</button>
+      }
     </div>
   )
 }
@@ -830,13 +831,6 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     }
   }
 
-  const handleCancelPending = async () => {
-    try {
-      await api.del(`/rooms/${room.id}/appointment/pending`, {}, true)
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : '취소에 실패했습니다.')
-    }
-  }
 
   const handleVerify = async (pos: { lat: number; lng: number }) => {
     try {
@@ -979,7 +973,7 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
               </div>
             ) : (
               <div key={msg.id} className="chat-bubble-wrap theirs">
-                <div className="chat-bubble bubble-theirs" style={{ background: '#f0f0f0', color: '#999', fontSize: '0.82rem' }}>📍 약속이 변경되었습니다</div>
+                <div className="chat-bubble bubble-theirs" style={{ background: '#f0f0f0', color: '#999', fontSize: '0.82rem' }}>📍 이 약속은 변경되었습니다</div>
                 <span className="chat-time">{msg.time}</span>
               </div>
             )
@@ -991,18 +985,18 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
             </div>
           )
         )}
+        {room.pendingAppointment && (
+          <div className="appt-card-wrapper">
+            <PendingApptCard
+              pending={room.pendingAppointment}
+              currentUserId={currentUserId}
+              totalCapacity={room.capacity}
+              onAccept={handleAcceptPending}
+            />
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
-
-      {room.pendingAppointment && (
-        <PendingApptBar
-          pending={room.pendingAppointment}
-          currentUserId={currentUserId}
-          totalCapacity={room.capacity}
-          onAccept={handleAcceptPending}
-          onCancel={handleCancelPending}
-        />
-      )}
 
       <div className="chat-input-bar">
         <button className="btn-plus" onClick={() => setShowPlus(p => !p)}>+</button>
