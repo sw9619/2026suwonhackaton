@@ -87,6 +87,7 @@ router.delete('/me', async (req: AuthRequest, res: Response) => {
     }
     await db.run('DELETE FROM rooms WHERE host_id = ?', uid)
     await db.run('DELETE FROM room_members WHERE user_id = ?', uid)
+    await db.run('DELETE FROM room_kicks WHERE user_id = ?', uid)
     await db.run('DELETE FROM match_queue WHERE user_id = ?', uid)
     await db.run('DELETE FROM users WHERE id = ?', uid)
 
