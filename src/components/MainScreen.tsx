@@ -97,6 +97,10 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
   const [showSoloCancelConfirm, setShowSoloCancelConfirm] = useState(false)
   const [showTeamCancelConfirm, setShowTeamCancelConfirm] = useState(false)
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({})
+  const [pendingMatchResult, setPendingMatchResult] = useState<{
+    myTeam: MockUser[]; otherTeam: MockUser[]; size: number
+    matchedUsers: MockUser[]; roomId?: number
+  } | null>(null)
 
   // stale closure 방지용 refs
   const activeRoomIdRef = useRef<number | null>(null)
@@ -190,18 +194,17 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
     const socket = getSocket()
     socket.emit('join-room', teamState.roomId)
 
+    const toUser = (m: MatchStartedPayload['members'][0]): MockUser => ({
+      id: m.id, nickname: m.nickname, studentId: m.student_id || '',
+      gender: m.gender as '남' | '여', dept: m.dept,
+    })
     const onMatchStarted = (data: MatchStartedPayload) => {
       const myGender = currentUser.gender
-      const matchedUsers = data.members
-        .filter(m => m.id !== currentUser.id)
-        .map(m => ({
-          id: m.id,
-          nickname: m.nickname,
-          studentId: m.student_id || '',
-          gender: m.gender as '남' | '여',
-          dept: m.dept,
-        }))
-      handleMatchSuccess(matchedUsers, data.size, data.roomId)
+      const myTeam = data.members.filter(m => m.gender === myGender).map(toUser)
+      const otherTeam = data.members.filter(m => m.gender !== myGender).map(toUser)
+      const matchedUsers = data.members.filter(m => m.id !== currentUser.id).map(toUser)
+      setTeamState(null)
+      setPendingMatchResult({ myTeam, otherTeam, size: data.size, matchedUsers, roomId: data.roomId })
     }
 
     const onMatchSeeking = () => {
@@ -233,17 +236,15 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
 
     const onMatchStarted = (data: MatchStartedPayload) => {
       const myGender = currentUser.gender
-      const matchedUsers = data.members
-        .filter(m => m.id !== currentUser.id)
-        .map(m => ({
-          id: m.id,
-          nickname: m.nickname,
-          studentId: m.student_id || '',
-          gender: m.gender as '남' | '여',
-          dept: m.dept,
-        }))
-      handleMatchSuccess(matchedUsers, data.size, data.roomId)
+      const toUser = (m: MatchStartedPayload['members'][0]): MockUser => ({
+        id: m.id, nickname: m.nickname, studentId: m.student_id || '',
+        gender: m.gender as '남' | '여', dept: m.dept,
+      })
+      const myTeam = data.members.filter(m => m.gender === myGender).map(toUser)
+      const otherTeam = data.members.filter(m => m.gender !== myGender).map(toUser)
+      const matchedUsers = data.members.filter(m => m.id !== currentUser.id).map(toUser)
       setSoloQueueState(null)
+      setPendingMatchResult({ myTeam, otherTeam, size: data.size, matchedUsers, roomId: data.roomId })
     }
 
     socket.on('match-started', onMatchStarted)
@@ -541,6 +542,45 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
       )}
     </>
   )
+
+  if (pendingMatchResult) {
+    const myGender = currentUser.gender
+    const otherGender = myGender === '남' ? '여' : '남'
+    return (
+      <div className="main-wrap">
+        <div className="match-wrap">
+          <h2 className="match-title" style={{ textAlign: 'center' }}>🎉 매칭 완료!</h2>
+          <p className="step-desc" style={{ textAlign: 'center' }}>
+            {pendingMatchResult.size}v{pendingMatchResult.size} 과팅이 성사됐어요!
+          </p>
+          <div className="result-team-box my-team-box">
+            <p className="result-team-label">우리 팀 ({myGender}자)</p>
+            {pendingMatchResult.myTeam.map((u, i) => (
+              <div key={i} className="result-user-row">
+                <span className="result-nickname">{u.nickname}</span>
+                <span className="result-info">{u.studentId && `${u.studentId} · `}{u.dept}</span>
+              </div>
+            ))}
+          </div>
+          <div className="result-vs">VS</div>
+          <div className="result-team-box other-team-box">
+            <p className="result-team-label">상대팀 ({otherGender}자)</p>
+            {pendingMatchResult.otherTeam.map((u, i) => (
+              <div key={i} className="result-user-row">
+                <span className="result-nickname">{u.nickname}</span>
+                <span className="result-info">{u.studentId && `${u.studentId} · `}{u.dept}</span>
+              </div>
+            ))}
+          </div>
+          <button className="btn-login" onClick={() => {
+            const { matchedUsers, size, roomId } = pendingMatchResult
+            setPendingMatchResult(null)
+            handleMatchSuccess(matchedUsers, size, roomId)
+          }}>채팅방 확인하기 💬</button>
+        </div>
+      </div>
+    )
+  }
 
   if (sub === 'chatroom' && activeRoom) return (
     <>
