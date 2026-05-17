@@ -229,14 +229,14 @@ function AppointmentModal({ onClose, onSend }: {
 function VerifyModal({ appointment, onVerify, onClose }: {
   appointment: Appointment; onVerify: (pos: { lat: number; lng: number }) => void; onClose: () => void
 }) {
-  const [step, setStep] = useState<'checking' | 'ready' | 'early' | 'far' | 'done' | 'gps-denied' | 'no-coords'>('checking')
+  const [step, setStep] = useState<'checking' | 'ready' | 'early' | 'far' | 'done' | 'gps-denied' | 'gps-blocked' | 'no-coords'>('checking')
   const [distanceM, setDistanceM] = useState<number | null>(null)
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null)
 
-  useEffect(() => {
+  const checkGPS = () => {
     if (!isWithinWindow(appointment.datetimeISO)) { setStep('early'); return }
-    if (!navigator.geolocation) { setStep('gps-denied'); return }
-
+    if (!navigator.geolocation) { setStep('gps-blocked'); return }
+    setStep('checking')
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude: userLat, longitude: userLng } = pos.coords
@@ -251,9 +251,19 @@ function VerifyModal({ appointment, onVerify, onClose }: {
         }
       },
       () => setStep('gps-denied'),
-      { timeout: 5000 }
+      { timeout: 8000 }
     )
-  }, [])
+  }
+
+  const requestPermission = async () => {
+    if (navigator.permissions) {
+      const result = await navigator.permissions.query({ name: 'geolocation' })
+      if (result.state === 'denied') { setStep('gps-blocked'); return }
+    }
+    checkGPS()
+  }
+
+  useEffect(() => { checkGPS() }, [])
 
   const remaining = timeUntilText(appointment.datetimeISO)
 
@@ -276,10 +286,21 @@ function VerifyModal({ appointment, onVerify, onClose }: {
         </div>
         {step === 'checking' && <div className="verify-status">📡 위치를 확인하고 있어요...</div>}
         {step === 'gps-denied' && (
+          <>
+            <div className="verify-status error">
+              📵 위치 권한이 거부되었어요.<br />
+              만남 인증을 위해 위치 권한이 필요해요.
+            </div>
+            <button className="btn-login" style={{ marginTop: 12 }} onClick={requestPermission}>
+              위치 권한 허용하기
+            </button>
+          </>
+        )}
+        {step === 'gps-blocked' && (
           <div className="verify-status error">
-            📵 위치 권한이 거부되었어요.<br />
-            만남 인증을 위해 위치 권한이 필요해요.<br />
-            창을 닫고 만남 인증을 다시 눌러주세요.
+            📵 위치 권한이 차단되어 있어요.<br />
+            브라우저 설정에서 위치 권한을 허용한 후<br />
+            다시 시도해주세요.
           </div>
         )}
         {step === 'early' && (
