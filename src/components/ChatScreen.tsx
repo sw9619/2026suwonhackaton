@@ -614,6 +614,10 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     [...room.messages].reverse().find(m => m.isAppointment)?.id
   , [room.messages])
 
+  // 만남 인증 제재: 약속 수락 완료 + 인증 창(약속 시각 +30분) 지남 + 미인증
+  const verifyDeadline = appt ? new Date(new Date(appt.datetimeISO).getTime() + 30 * 60 * 1000) : null
+  const isPenalized = !!(appt?.accepted && !myVerified && verifyDeadline && Date.now() > verifyDeadline.getTime())
+
   // 약속 시간 + 4시간 이후에만 마음에 드는 상태 선택 가능
   const pickUnlockTime = appt ? new Date(new Date(appt.datetimeISO).getTime() + 4 * 60 * 60 * 1000) : null
   const canPick = pickUnlockTime ? Date.now() >= pickUnlockTime.getTime() : false
@@ -712,10 +716,8 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
 
   const handleAcceptAppointment = async () => {
     try {
-      const result = await api.put<{ acceptedBy: number[]; isFullyAccepted: boolean }>(
-        `/rooms/${room.id}/appointment/accept`, {}, true
-      )
-      if (appt) onUpdateRoom({ ...room, appointment: { ...appt, accepted: result.isFullyAccepted, acceptedBy: result.acceptedBy } })
+      await api.put(`/rooms/${room.id}/appointment/accept`, {}, true)
+      // 상태 업데이트는 소켓 이벤트 'appointment-accepted'가 전담 (자신 포함 전체 멤버)
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : '수락에 실패했습니다.')
     }
@@ -723,10 +725,8 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
 
   const handleVerify = async (pos: { lat: number; lng: number }) => {
     try {
-      const result = await api.put<{ verifiedBy: number[] }>(
-        `/rooms/${room.id}/appointment/verify`, { lat: pos.lat, lng: pos.lng }, true
-      )
-      if (appt) onUpdateRoom({ ...room, appointment: { ...appt, verifiedBy: result.verifiedBy, verified: true } })
+      await api.put(`/rooms/${room.id}/appointment/verify`, { lat: pos.lat, lng: pos.lng }, true)
+      // 상태 업데이트는 소켓 이벤트 'appointment-verified'가 전담
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : '인증에 실패했습니다.')
     }
@@ -762,6 +762,27 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
             </button>
           : pickCountdown && <span style={{ fontSize: '0.68rem', color: '#aaa', whiteSpace: 'nowrap' }}>{pickCountdown} 후 선택</span>
         }
+      </div>
+    )
+  }
+
+  if (isPenalized) {
+    return (
+      <div className="chat-room-wrap">
+        <div className="modal-overlay">
+          <div className="modal-box" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>⚠️</div>
+            <h3 className="modal-title" style={{ marginBottom: 12 }}>이용 제한 안내</h3>
+            <p style={{ fontSize: '0.92rem', color: '#555', lineHeight: 1.6, marginBottom: 20 }}>
+              약속 시간 내 만남 인증을 완료하지 않아<br />
+              해당 채팅방 이용이 <strong>불가</strong>합니다.<br />
+              채팅방에서 자동으로 나가게 됩니다.
+            </p>
+            <button className="btn-login" style={{ background: '#e74c3c', width: '100%' }} onClick={onLeave}>
+              확인 후 나가기
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
