@@ -78,6 +78,9 @@ router.post('/join', async (req: AuthRequest, res: Response) => {
     if (!room) return res.status(404).json({ message: '존재하지 않는 방입니다.' })
     if (room.status !== 'waiting') return res.status(400).json({ message: '이미 시작된 방입니다.' })
 
+    const me = await db.get<{ gender: string }>('SELECT gender FROM users WHERE id = ?', req.userId)
+    if (me && room.team_gender !== me.gender) return res.status(403).json({ message: `이 방은 ${room.team_gender}자 전용이에요.` })
+
     const countRow = await db.get<{ cnt: string }>('SELECT COUNT(*) AS cnt FROM room_members WHERE room_id = ?', room.id)
     const memberCount = Number(countRow?.cnt ?? 0)
     if (memberCount >= room.capacity) return res.status(400).json({ message: '방이 가득 찼습니다.' })
