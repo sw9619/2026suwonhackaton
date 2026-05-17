@@ -635,7 +635,8 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     const socket = getSocket()
     socket.emit('join-room', room.id)
 
-    const onAppointmentUpdated = (data: { place: string; datetimeISO: string; acceptedBy: number[]; verifiedBy: number[]; accepted: boolean; verified: boolean; lat?: number; lng?: number }) => {
+    const onAppointmentUpdated = (data: { roomId: number; place: string; datetimeISO: string; acceptedBy: number[]; verifiedBy: number[]; accepted: boolean; verified: boolean; lat?: number; lng?: number }) => {
+      if (data.roomId !== room.id) return
       const apptMsg: ChatMessage = { id: Date.now(), text: '', isMine: false, time: nowTime(), isAppointment: true }
       const cur = roomRef.current
       onUpdateRoom({
@@ -646,6 +647,7 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     }
 
     const onAppointmentAccepted = (data: { roomId: number; acceptedBy: number[]; isFullyAccepted: boolean }) => {
+      if (data.roomId !== room.id) return
       const cur = roomRef.current
       if (cur.appointment) {
         onUpdateRoom({ ...cur, appointment: { ...cur.appointment, accepted: data.isFullyAccepted, acceptedBy: data.acceptedBy } })
@@ -653,6 +655,7 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     }
 
     const onAppointmentVerified = (data: { roomId: number; verifiedBy: number[] }) => {
+      if (data.roomId !== room.id) return
       const cur = roomRef.current
       if (cur.appointment) {
         onUpdateRoom({ ...cur, appointment: { ...cur.appointment, verifiedBy: data.verifiedBy, verified: data.verifiedBy.length > 0 } })
