@@ -241,6 +241,13 @@ function VerifyModal({ appointment, onVerify, onClose }: {
   const [step, setStep] = useState<'checking' | 'ready' | 'early' | 'far' | 'done' | 'gps-denied' | 'gps-blocked' | 'no-coords'>('checking')
   const [distanceM, setDistanceM] = useState<number | null>(null)
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null)
+  const [noshowCount, setNoshowCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    api.get<{ user: { noshow_count: number } }>('/users/me', true)
+      .then(d => setNoshowCount(d.user.noshow_count))
+      .catch(() => {})
+  }, [])
 
   const checkGPS = () => {
     if (!isWithinWindow(appointment.datetimeISO)) { setStep('early'); return }
@@ -293,6 +300,12 @@ function VerifyModal({ appointment, onVerify, onClose }: {
             <span className="verify-info-value">{formatDatetime(appointment.datetimeISO)}</span>
           </div>
         </div>
+        {noshowCount !== null && (
+          <div className="noshow-warning">
+            ⚠️ 인증 미이행 시 노쇼 처리됩니다
+            <span className="noshow-count">{noshowCount}/2회 누적 · 3회 시 계정 영구 정지</span>
+          </div>
+        )}
         {step === 'checking' && <div className="verify-status">📡 위치를 확인하고 있어요...</div>}
         {step === 'gps-denied' && (
           <>

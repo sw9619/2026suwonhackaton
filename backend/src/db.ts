@@ -205,6 +205,8 @@ export async function initDB() {
     `ALTER TABLE rooms ADD COLUMN IF NOT EXISTS allow_duplicate INTEGER NOT NULL DEFAULT 1`,
     `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION`,
     `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS noshow_count INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended INTEGER NOT NULL DEFAULT 0`,
   ]
   for (const sql of migrations) {
     try { await pool.query(sql) } catch { /* 이미 존재 */ }

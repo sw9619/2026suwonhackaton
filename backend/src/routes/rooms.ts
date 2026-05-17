@@ -219,8 +219,30 @@ router.delete('/:id/members/:userId', async (req: AuthRequest, res: Response) =>
 router.delete('/:id/leave', async (req: AuthRequest, res: Response) => {
   try {
     const roomId = parseInt(req.params.id)
-    const user = await db.get<{ nickname: string }>('SELECT nickname FROM users WHERE id = ?', req.userId)
+    const userId = req.userId!
+    const user = await db.get<{ nickname: string }>('SELECT nickname FROM users WHERE id = ?', userId)
     const room = await db.get<{ host_id: number; status: string }>('SELECT host_id, status FROM rooms WHERE id = ?', roomId)
+
+    // 노쇼 여부 확인: 약속 수락 완료 + 인증 시간 초과 + 미인증
+    const appt = await db.get<{ accepted: number; datetime_iso: string }>(
+      'SELECT accepted, datetime_iso FROM appointments WHERE room_id = ?', roomId
+    )
+    if (appt?.accepted === 1) {
+      const verified = await db.get(
+        'SELECT id FROM appointment_verifies WHERE room_id = ? AND user_id = ?', roomId, userId
+      )
+      if (!verified) {
+        const deadline = new Date(appt.datetime_iso).getTime() + 30 * 60 * 1000
+        if (Date.now() > deadline) {
+          // 노쇼 카운트 증가
+          await db.run('UPDATE users SET noshow_count = noshow_count + 1 WHERE id = ?', userId)
+          const updated = await db.get<{ noshow_count: number }>('SELECT noshow_count FROM users WHERE id = ?', userId)
+          if ((updated?.noshow_count ?? 0) >= 3) {
+            await db.run('UPDATE users SET is_suspended = 1 WHERE id = ?', userId)
+          }
+        }
+      }
+    }
 
     const io = getIo()
 

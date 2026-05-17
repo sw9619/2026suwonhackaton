@@ -51,7 +51,14 @@ async function request<T>(
   })
 
   const data = await res.json()
-  if (!res.ok) throw new Error(data.message ?? '오류가 발생했습니다.')
+  if (!res.ok) {
+    if (res.status === 403 && typeof data.message === 'string' && data.message.includes('정지')) {
+      clearToken()
+      alert('⚠️ 계정이 정지되었습니다.\n만남인증 미이행 3회 누적으로 계정이 영구 정지되었습니다.')
+      window.location.reload()
+    }
+    throw new Error(data.message ?? '오류가 발생했습니다.')
+  }
   return data as T
 }
 

@@ -10,8 +10,8 @@ router.use(authMiddleware)
 // 내 정보 조회
 router.get('/me', async (req: AuthRequest, res: Response) => {
   const user = await db.get<{
-    id: number; email: string; nickname: string; gender: string; dept: string; student_id: string; created_at: string
-  }>('SELECT id, email, nickname, gender, dept, student_id, created_at FROM users WHERE id = ?', req.userId)
+    id: number; email: string; nickname: string; gender: string; dept: string; student_id: string; created_at: string; noshow_count: number
+  }>('SELECT id, email, nickname, gender, dept, student_id, created_at, noshow_count FROM users WHERE id = ?', req.userId)
 
   if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' })
   return res.json({ user })

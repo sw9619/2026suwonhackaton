@@ -146,13 +146,15 @@ router.post('/login', async (req: Request, res: Response) => {
   if (!email || !password) return res.status(400).json({ message: '이메일과 비밀번호를 입력해주세요.' })
 
   const user = await db.get<{
-    id: number; email: string; password_hash: string; nickname: string; gender: string; dept: string; student_id: string
+    id: number; email: string; password_hash: string; nickname: string; gender: string; dept: string; student_id: string; is_suspended: number
   }>('SELECT * FROM users WHERE email = ?', email)
 
   if (!user) return res.status(401).json({ message: '이메일 또는 비밀번호가 올바르지 않습니다.' })
 
   const valid = await bcrypt.compare(password, user.password_hash)
   if (!valid) return res.status(401).json({ message: '이메일 또는 비밀번호가 올바르지 않습니다.' })
+
+  if (user.is_suspended) return res.status(403).json({ message: '계정이 정지되었습니다. (만남인증 미이행 3회 누적)' })
 
   const token = signToken(user.id, user.email)
   return res.json({
