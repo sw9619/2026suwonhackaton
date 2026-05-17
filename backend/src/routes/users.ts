@@ -111,6 +111,16 @@ router.get('/me/rooms', async (req: AuthRequest, res: Response) => {
       const verifiedBy = appointment ? (await db.all<{ user_id: number }>('SELECT user_id FROM appointment_verifies WHERE room_id = ?', room.id)).map(r => r.user_id) : []
       const apptData = appointment ? { ...appointment, acceptedBy, verifiedBy } : undefined
 
+      const pendingAppt = await db.get<{ place: string; datetime_iso: string; lat?: number; lng?: number; proposed_by: number }>(
+        'SELECT place, datetime_iso, lat, lng, proposed_by FROM pending_appointments WHERE room_id = ?', room.id
+      )
+      const pendingAcceptedBy = pendingAppt
+        ? (await db.all<{ user_id: number }>('SELECT user_id FROM pending_appointment_accepts WHERE room_id = ?', room.id)).map(r => r.user_id)
+        : []
+      const pendingApptData = pendingAppt
+        ? { place: pendingAppt.place, datetimeISO: pendingAppt.datetime_iso, lat: pendingAppt.lat, lng: pendingAppt.lng, proposedBy: pendingAppt.proposed_by, acceptedBy: pendingAcceptedBy }
+        : undefined
+
       const myLikeRow = await db.get<{ nickname: string }>(
         'SELECT u.nickname FROM likes l JOIN users u ON u.id = l.likee_id WHERE l.room_id = ? AND l.liker_id = ?',
         room.id, req.userId
@@ -120,7 +130,7 @@ router.get('/me/rooms', async (req: AuthRequest, res: Response) => {
       )
       const myRatings = myRatingRows.reduce((acc, r) => ({ ...acc, [r.ratee_id]: r.stars }), {} as Record<number, number>)
 
-      return { ...room, members, memberCount: members.length, messages, appointment: apptData, myLikee: myLikeRow?.nickname, myRatings }
+      return { ...room, members, memberCount: members.length, messages, appointment: apptData, pendingAppointment: pendingApptData, myLikee: myLikeRow?.nickname, myRatings }
     }))
 
     return res.json({ rooms: result })

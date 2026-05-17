@@ -177,6 +177,26 @@ export async function initDB() {
       created_at TIMESTAMP DEFAULT NOW(),
       UNIQUE (room_id, user_id)
     );
+
+    CREATE TABLE IF NOT EXISTS pending_appointments (
+      id SERIAL PRIMARY KEY,
+      room_id INTEGER UNIQUE NOT NULL,
+      place TEXT NOT NULL,
+      datetime_iso TEXT NOT NULL,
+      lat DOUBLE PRECISION,
+      lng DOUBLE PRECISION,
+      proposed_by INTEGER,
+      created_at TIMESTAMP DEFAULT NOW(),
+      FOREIGN KEY (room_id) REFERENCES rooms(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS pending_appointment_accepts (
+      id SERIAL PRIMARY KEY,
+      room_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE (room_id, user_id)
+    );
   `)
 
   // 마이그레이션 (기존 테이블에 컬럼 추가)

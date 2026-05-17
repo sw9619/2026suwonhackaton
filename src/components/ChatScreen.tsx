@@ -21,7 +21,15 @@ export interface Appointment {
   verifiedBy: number[]
   lat?: number
   lng?: number
-  isPending?: boolean
+}
+
+export interface PendingAppointment {
+  place: string
+  datetimeISO: string
+  lat?: number
+  lng?: number
+  proposedBy: number
+  acceptedBy: number[]
 }
 
 export interface MemberDetail {
@@ -36,6 +44,7 @@ export interface ChatRoom {
   title: string
   messages: ChatMessage[]
   appointment?: Appointment
+  pendingAppointment?: PendingAppointment
   capacity: number
   memberCount: number
   members: string[]
@@ -510,12 +519,11 @@ function AppointmentCard({ appt, currentUserId, totalCapacity, onAccept, isCurre
 }) {
   const myAccepted = currentUserId ? appt.acceptedBy.includes(currentUserId) : false
   const acceptCount = appt.acceptedBy.length
-  const isPending = isCurrent && !!appt.isPending
 
   return (
-    <div className={`appt-card ${!isCurrent ? 'appt-card-old' : ''} ${isPending ? 'appt-card-pending' : ''}`}>
+    <div className={`appt-card ${!isCurrent ? 'appt-card-old' : ''}`}>
       <div className="appt-card-title">
-        {!isCurrent ? '📅 이전 약속' : isPending ? '📍 약속장소 변경 제안' : '📅 약속 설정'}
+        {!isCurrent ? '📅 이전 약속' : '📅 약속 설정'}
       </div>
       <div className="appt-card-row">
         <span className="appt-card-icon">📍</span>
@@ -542,6 +550,40 @@ function AppointmentCard({ appt, currentUserId, totalCapacity, onAccept, isCurre
       ) : (
         <div className="appt-accepted">✅ 약속이 확정되었어요!</div>
       )}
+    </div>
+  )
+}
+
+// ── 약속 변경 제안 바 ────────────────────────────────────────────
+
+function PendingApptBar({ pending, currentUserId, totalCapacity, onAccept, onCancel }: {
+  pending: PendingAppointment
+  currentUserId?: number
+  totalCapacity: number
+  onAccept: () => void
+  onCancel: () => void
+}) {
+  const myAccepted = currentUserId ? pending.acceptedBy.includes(currentUserId) : false
+  const isProposer = currentUserId === pending.proposedBy
+
+  return (
+    <div className="pending-appt-bar">
+      <div className="pending-appt-bar-header">
+        <span className="pending-appt-bar-title">📍 약속 장소 변경 제안</span>
+        <span className="pending-appt-bar-count">{pending.acceptedBy.length}/{totalCapacity}명 수락</span>
+      </div>
+      <div className="pending-appt-bar-place">{pending.place}</div>
+      <div className="pending-appt-bar-time">{formatDatetime(pending.datetimeISO)}</div>
+      <div className="pending-appt-bar-actions">
+        {myAccepted ? (
+          <div className="appt-accepted" style={{ flex: 1, textAlign: 'left', fontSize: '0.82rem' }}>✅ 수락 완료</div>
+        ) : (
+          <button className="btn-accept" style={{ flex: 1, marginTop: 0 }} onClick={onAccept}>수락하기</button>
+        )}
+        {isProposer && (
+          <button className="btn-reject" onClick={onCancel}>제안 취소</button>
+        )}
+      </div>
     </div>
   )
 }
@@ -656,7 +698,7 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     const socket = getSocket()
     socket.emit('join-room', room.id)
 
-    const onAppointmentUpdated = (data: { roomId: number; place: string; datetimeISO: string; acceptedBy: number[]; verifiedBy: number[]; accepted: boolean; verified: boolean; lat?: number; lng?: number }) => {
+    const onAppointmentUpdated = (data: { roomId: number; place: string; datetimeISO: string; acceptedBy: number[]; verifiedBy: number[]; accepted: boolean; verified: boolean; lat?: number; lng?: number; clearPending?: boolean }) => {
       if (data.roomId !== room.id) return
       const apptMsg: ChatMessage = { id: Date.now(), text: '', isMine: false, time: nowTime(), isAppointment: true }
       const cur = roomRef.current
@@ -664,6 +706,7 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
         ...cur,
         messages: [...cur.messages, apptMsg],
         appointment: { place: data.place, datetimeISO: data.datetimeISO, accepted: false, acceptedBy: [], verified: false, verifiedBy: [], lat: data.lat, lng: data.lng },
+        pendingAppointment: data.clearPending ? undefined : cur.pendingAppointment,
       })
     }
 
@@ -681,6 +724,29 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
       if (cur.appointment) {
         onUpdateRoom({ ...cur, appointment: { ...cur.appointment, verifiedBy: data.verifiedBy, verified: data.verifiedBy.length > 0 } })
       }
+    }
+
+    const onPendingAppointmentSet = (data: { roomId: number; place: string; datetimeISO: string; lat?: number; lng?: number; proposedBy: number; acceptedBy: number[] }) => {
+      if (data.roomId !== room.id) return
+      const cur = roomRef.current
+      onUpdateRoom({
+        ...cur,
+        pendingAppointment: { place: data.place, datetimeISO: data.datetimeISO, lat: data.lat, lng: data.lng, proposedBy: data.proposedBy, acceptedBy: data.acceptedBy },
+      })
+    }
+
+    const onPendingAppointmentAccepted = (data: { roomId: number; acceptedBy: number[] }) => {
+      if (data.roomId !== room.id) return
+      const cur = roomRef.current
+      if (cur.pendingAppointment) {
+        onUpdateRoom({ ...cur, pendingAppointment: { ...cur.pendingAppointment, acceptedBy: data.acceptedBy } })
+      }
+    }
+
+    const onPendingAppointmentCleared = (data: { roomId: number }) => {
+      if (data.roomId !== room.id) return
+      const cur = roomRef.current
+      onUpdateRoom({ ...cur, pendingAppointment: undefined })
     }
 
     const onMutualMatchFound = (data: { dmRoomId: number; title: string; otherUser: { id: number; nickname: string } }) => {
@@ -702,6 +768,9 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
     socket.on('appointment-updated', onAppointmentUpdated)
     socket.on('appointment-accepted', onAppointmentAccepted)
     socket.on('appointment-verified', onAppointmentVerified)
+    socket.on('pending-appointment-set', onPendingAppointmentSet)
+    socket.on('pending-appointment-accepted', onPendingAppointmentAccepted)
+    socket.on('pending-appointment-cleared', onPendingAppointmentCleared)
     socket.on('mutual-match-found', onMutualMatchFound)
     socket.on('nickname-changed', onNicknameChanged)
 
@@ -709,6 +778,9 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
       socket.off('appointment-updated', onAppointmentUpdated)
       socket.off('appointment-accepted', onAppointmentAccepted)
       socket.off('appointment-verified', onAppointmentVerified)
+      socket.off('pending-appointment-set', onPendingAppointmentSet)
+      socket.off('pending-appointment-accepted', onPendingAppointmentAccepted)
+      socket.off('pending-appointment-cleared', onPendingAppointmentCleared)
       socket.off('mutual-match-found', onMutualMatchFound)
       socket.off('nickname-changed', onNicknameChanged)
       // leave-room은 MainScreen이 관리하므로 여기서는 emit하지 않음
@@ -722,16 +794,19 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
   const handleSetAppointment = async (place: string, dt: Date, lat?: number, lng?: number) => {
     const datetimeISO = dt.toISOString()
     try {
-      await api.post(`/rooms/${room.id}/appointment`, { place, datetimeISO, lat, lng }, true)
-      const socket = getSocket()
-      socket.emit('appointment-set', { roomId: room.id, place, datetimeISO, lat, lng })
-      // 발신자 낙관적 업데이트 (다른 사람들은 소켓 이벤트로 수신)
-      const apptMsg: ChatMessage = { id: Date.now(), text: '', isMine: true, time: nowTime(), isAppointment: true }
-      onUpdateRoom({
-        ...room,
-        messages: [...room.messages, apptMsg],
-        appointment: { place, datetimeISO, accepted: false, acceptedBy: [], verified: false, verifiedBy: [], lat, lng },
-      })
+      const result = await api.post<{ message: string; pending?: boolean }>(`/rooms/${room.id}/appointment`, { place, datetimeISO, lat, lng }, true)
+      if (!result.pending) {
+        // 새 약속 설정: 소켓 릴레이 + 낙관적 업데이트
+        const socket = getSocket()
+        socket.emit('appointment-set', { roomId: room.id, place, datetimeISO, lat, lng })
+        const apptMsg: ChatMessage = { id: Date.now(), text: '', isMine: true, time: nowTime(), isAppointment: true }
+        onUpdateRoom({
+          ...room,
+          messages: [...room.messages, apptMsg],
+          appointment: { place, datetimeISO, accepted: false, acceptedBy: [], verified: false, verifiedBy: [], lat, lng },
+        })
+      }
+      // pending: true이면 백엔드가 'pending-appointment-set' 소켓을 전체에 emit → 소켓으로 처리
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : '약속 설정에 실패했습니다.')
     }
@@ -744,6 +819,22 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
       // 상태 업데이트는 소켓 이벤트 'appointment-accepted'가 전담 (자신 포함 전체 멤버)
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : '수락에 실패했습니다.')
+    }
+  }
+
+  const handleAcceptPending = async () => {
+    try {
+      await api.put(`/rooms/${room.id}/appointment/pending/accept`, {}, true)
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : '수락에 실패했습니다.')
+    }
+  }
+
+  const handleCancelPending = async () => {
+    try {
+      await api.del(`/rooms/${room.id}/appointment/pending`, {}, true)
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : '취소에 실패했습니다.')
     }
   }
 
@@ -902,6 +993,16 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
         )}
         <div ref={bottomRef} />
       </div>
+
+      {room.pendingAppointment && (
+        <PendingApptBar
+          pending={room.pendingAppointment}
+          currentUserId={currentUserId}
+          totalCapacity={room.capacity}
+          onAccept={handleAcceptPending}
+          onCancel={handleCancelPending}
+        />
+      )}
 
       <div className="chat-input-bar">
         <button className="btn-plus" onClick={() => setShowPlus(p => !p)}>+</button>
