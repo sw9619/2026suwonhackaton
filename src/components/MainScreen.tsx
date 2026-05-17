@@ -370,16 +370,17 @@ export default function MainScreen({ onLogout, onAccountDeleted, onPasswordReset
 
   const handleLeave = async () => {
     if (!activeRoom) return
-    try {
-      await api.del(`/rooms/${activeRoom.id}/leave`, {}, true)
-    } catch { /* ignore */ }
-    getSocket().emit('leave-room', activeRoom.id)
-    joinedRoomIds.current.delete(activeRoom.id)
-    setUnreadCounts(prev => { const next = { ...prev }; delete next[activeRoom.id]; return next })
-    setChatRooms(prev => prev.filter(r => r.id !== activeRoom.id))
+    const roomId = activeRoom.id
+    getSocket().emit('leave-room', roomId)
+    joinedRoomIds.current.delete(roomId)
+    setUnreadCounts(prev => { const next = { ...prev }; delete next[roomId]; return next })
+    setChatRooms(prev => prev.filter(r => r.id !== roomId))
     setActiveRoom(null)
     setSub(null)
     setTab('채팅방')
+    try {
+      await api.del(`/rooms/${roomId}/leave`, {}, true)
+    } catch { /* ignore */ }
   }
 
   const handleUpdateUser = (nickname: string) => {
