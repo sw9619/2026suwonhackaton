@@ -762,10 +762,6 @@ export default function RandomMatchScreen({
 
 
 
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <QueueBar label={`${myGender}자 (우리)`} count={queueStatus.myCount} needed={queueStatus.needed} color="#ff6b9d" />
-              <QueueBar label={`${otherGender}자 (상대)`} count={queueStatus.theirCount} needed={queueStatus.needed} color="#5b87ff" />
-            </div>
             <p style={{ fontSize: '0.75rem', color: '#aaa' }}>
               대기 {Math.floor(waitSeconds / 60)}분 {waitSeconds % 60}초
             </p>
@@ -804,17 +800,3 @@ function DuplicateToggle({ value, onChange }: { value: boolean; onChange: (v: bo
   )
 }
 
-function QueueBar({ label, count, needed, color }: { label: string; count: number; needed: number; color: string }) {
-  const pct = Math.min((count / needed) * 100, 100)
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.88rem', fontWeight: 600 }}>
-        <span>{label}</span>
-        <span style={{ color }}>{count} / {needed}명</span>
-      </div>
-      <div style={{ height: 10, borderRadius: 6, background: '#e0e0e0', overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 6, transition: 'width 0.4s ease' }} />
-      </div>
-    </div>
-  )
-}
