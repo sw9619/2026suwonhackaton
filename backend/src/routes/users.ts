@@ -56,40 +56,45 @@ router.delete('/me', async (req: AuthRequest, res: Response) => {
   const { password } = req.body as { password: string }
   if (!password) return res.status(400).json({ message: '비밀번호를 입력해주세요.' })
 
-  const user = await db.get<{ password_hash: string }>('SELECT password_hash FROM users WHERE id = ?', req.userId)
-  if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' })
+  try {
+    const user = await db.get<{ password_hash: string }>('SELECT password_hash FROM users WHERE id = ?', req.userId)
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' })
 
-  const valid = await bcrypt.compare(password, user.password_hash)
-  if (!valid) return res.status(401).json({ message: '비밀번호가 올바르지 않습니다.' })
+    const valid = await bcrypt.compare(password, user.password_hash)
+    if (!valid) return res.status(401).json({ message: '비밀번호가 올바르지 않습니다.' })
 
-  const uid = req.userId!
+    const uid = req.userId!
 
-  await db.run('DELETE FROM likes WHERE liker_id = ? OR likee_id = ?', uid, uid)
+    await db.run('DELETE FROM likes WHERE liker_id = ? OR likee_id = ?', uid, uid)
 
-  const hostedRooms = await db.all<{ id: number }>('SELECT id FROM rooms WHERE host_id = ?', uid)
-  for (const room of hostedRooms) {
-    await db.run('DELETE FROM pending_appointment_accepts WHERE room_id = ?', room.id)
-    await db.run('DELETE FROM pending_appointments WHERE room_id = ?', room.id)
-    await db.run('DELETE FROM appointment_accepts WHERE room_id = ?', room.id)
-    await db.run('DELETE FROM appointment_verifies WHERE room_id = ?', room.id)
-    await db.run('DELETE FROM likes WHERE room_id = ?', room.id)
-    await db.run('DELETE FROM ratings WHERE room_id = ?', room.id)
-    await db.run('DELETE FROM appointments WHERE room_id = ?', room.id)
-    await db.run('DELETE FROM messages WHERE room_id = ?', room.id)
-    await db.run('DELETE FROM room_members WHERE room_id = ?', room.id)
+    const hostedRooms = await db.all<{ id: number }>('SELECT id FROM rooms WHERE host_id = ?', uid)
+    for (const room of hostedRooms) {
+      await db.run('DELETE FROM pending_appointment_accepts WHERE room_id = ?', room.id)
+      await db.run('DELETE FROM pending_appointments WHERE room_id = ?', room.id)
+      await db.run('DELETE FROM appointment_accepts WHERE room_id = ?', room.id)
+      await db.run('DELETE FROM appointment_verifies WHERE room_id = ?', room.id)
+      await db.run('DELETE FROM likes WHERE room_id = ?', room.id)
+      await db.run('DELETE FROM ratings WHERE room_id = ?', room.id)
+      await db.run('DELETE FROM appointments WHERE room_id = ?', room.id)
+      await db.run('DELETE FROM messages WHERE room_id = ?', room.id)
+      await db.run('DELETE FROM room_members WHERE room_id = ?', room.id)
+    }
+    const memberRooms = await db.all<{ room_id: number }>('SELECT room_id FROM room_members WHERE user_id = ?', uid)
+    for (const r of memberRooms) {
+      await db.run('DELETE FROM pending_appointment_accepts WHERE room_id = ? AND user_id = ?', r.room_id, uid)
+      await db.run('DELETE FROM appointment_accepts WHERE room_id = ? AND user_id = ?', r.room_id, uid)
+      await db.run('DELETE FROM appointment_verifies WHERE room_id = ? AND user_id = ?', r.room_id, uid)
+    }
+    await db.run('DELETE FROM rooms WHERE host_id = ?', uid)
+    await db.run('DELETE FROM room_members WHERE user_id = ?', uid)
+    await db.run('DELETE FROM match_queue WHERE user_id = ?', uid)
+    await db.run('DELETE FROM users WHERE id = ?', uid)
+
+    return res.json({ message: '계정이 삭제되었습니다.' })
+  } catch (e) {
+    console.error('[DELETE /users/me]', e)
+    return res.status(500).json({ message: '계정 삭제에 실패했습니다.' })
   }
-  const memberRooms = await db.all<{ room_id: number }>('SELECT room_id FROM room_members WHERE user_id = ?', uid)
-  for (const r of memberRooms) {
-    await db.run('DELETE FROM pending_appointment_accepts WHERE room_id = ? AND user_id = ?', r.room_id, uid)
-    await db.run('DELETE FROM appointment_accepts WHERE room_id = ? AND user_id = ?', r.room_id, uid)
-    await db.run('DELETE FROM appointment_verifies WHERE room_id = ? AND user_id = ?', r.room_id, uid)
-  }
-  await db.run('DELETE FROM rooms WHERE host_id = ?', uid)
-  await db.run('DELETE FROM room_members WHERE user_id = ?', uid)
-  await db.run('DELETE FROM match_queue WHERE user_id = ?', uid)
-  await db.run('DELETE FROM users WHERE id = ?', uid)
-
-  return res.json({ message: '계정이 삭제되었습니다.' })
 })
 
 // 내가 참여한 활성 채팅방 목록 조회
