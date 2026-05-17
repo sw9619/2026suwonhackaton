@@ -1404,6 +1404,47 @@ body {
 .chat-time { font-size: 0.65rem; color: #8E8E8E; }
 
 
+.pending-appt-bar {
+  background: #FFFBF0;
+  border-top: 2px solid #f5a623;
+  padding: 10px 14px 8px;
+  flex-shrink: 0;
+}
+
+.pending-appt-bar-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.pending-appt-bar-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #856404;
+}
+
+.pending-appt-bar-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #856404;
+  background: #FFF3CD;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.pending-appt-bar-place {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #262626;
+  margin-bottom: 1px;
+}
+
+.pending-appt-bar-time {
+  font-size: 0.76rem;
+  color: #8E8E8E;
+}
+
 .chat-input-bar {
   display: flex;
   gap: 8px;
@@ -2617,6 +2658,13 @@ body {
 .dark .btn-map-small { background: #262626; border-color: #363636; color: #fff; }
 .dark .appt-accepted { color: #A8A8A8; }
 
+
+/* 약속 변경 제안 배너 */
+.dark .pending-appt-bar { background: #1a1500; border-color: #856404; }
+.dark .pending-appt-bar-title { color: #f5c542; }
+.dark .pending-appt-bar-count { background: #2a1f00; color: #f5c542; }
+.dark .pending-appt-bar-place { color: #fff; }
+.dark .pending-appt-bar-time { color: #737373; }
 
 /* 모달 */
 .dark .modal-overlay { background: rgba(0,0,0,0.7); }

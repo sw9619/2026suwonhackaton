@@ -554,9 +554,9 @@ function AppointmentCard({ appt, currentUserId, totalCapacity, onAccept, isCurre
   )
 }
 
-// ── 약속 변경 제안 카드 ──────────────────────────────────────────
+// ── 약속 변경 제안 배너 ──────────────────────────────────────────
 
-function PendingApptCard({ pending, currentUserId, totalCapacity, onAccept }: {
+function PendingApptBar({ pending, currentUserId, totalCapacity, onAccept }: {
   pending: PendingAppointment
   currentUserId?: number
   totalCapacity: number
@@ -566,24 +566,16 @@ function PendingApptCard({ pending, currentUserId, totalCapacity, onAccept }: {
   const acceptCount = pending.acceptedBy.length
 
   return (
-    <div className="appt-card appt-card-pending">
-      <div className="appt-card-title">📍 약속장소 변경 제안</div>
-      <div className="appt-card-row">
-        <span className="appt-card-icon">📍</span>
-        <span className="appt-card-text">{pending.place}</span>
-        <button className="btn-map-small"
-          onClick={() => window.open(`https://map.kakao.com/?q=${encodeURIComponent(pending.place)}`, '_blank')}>
-          지도
-        </button>
+    <div className="pending-appt-bar">
+      <div className="pending-appt-bar-top">
+        <span className="pending-appt-bar-title">📍 약속장소 변경 제안</span>
+        <span className="pending-appt-bar-count">{acceptCount}/{totalCapacity}명 수락</span>
       </div>
-      <div className="appt-card-row">
-        <span className="appt-card-icon">🕐</span>
-        <span className="appt-card-text">{formatDatetime(pending.datetimeISO)}</span>
-      </div>
-      <div className="appt-accept-count">수락 {acceptCount}/{totalCapacity}명</div>
+      <div className="pending-appt-bar-place">{pending.place}</div>
+      <div className="pending-appt-bar-time">{formatDatetime(pending.datetimeISO)}</div>
       {myAccepted
-        ? <div className="appt-accepted">✅ 수락 완료 ({acceptCount}/{totalCapacity}명 수락)</div>
-        : <button className="btn-accept" onClick={onAccept}>수락하기</button>
+        ? <div className="appt-accepted" style={{ fontSize: '0.82rem', padding: '4px 0' }}>✅ 수락 완료</div>
+        : <button className="btn-accept" style={{ marginTop: 6 }} onClick={onAccept}>수락하기</button>
       }
     </div>
   )
@@ -706,7 +698,7 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
       onUpdateRoom({
         ...cur,
         messages: [...cur.messages, apptMsg],
-        appointment: { place: data.place, datetimeISO: data.datetimeISO, accepted: false, acceptedBy: [], verified: false, verifiedBy: [], lat: data.lat, lng: data.lng },
+        appointment: { place: data.place, datetimeISO: data.datetimeISO, accepted: data.accepted, acceptedBy: data.acceptedBy, verified: false, verifiedBy: [], lat: data.lat, lng: data.lng },
         pendingAppointment: data.clearPending ? undefined : cur.pendingAppointment,
       })
     }
@@ -985,18 +977,17 @@ export function ChatRoomView({ room, currentUserId, currentNickname, currentGend
             </div>
           )
         )}
-        {room.pendingAppointment && (
-          <div className="appt-card-wrapper">
-            <PendingApptCard
-              pending={room.pendingAppointment}
-              currentUserId={currentUserId}
-              totalCapacity={room.capacity}
-              onAccept={handleAcceptPending}
-            />
-          </div>
-        )}
         <div ref={bottomRef} />
       </div>
+
+      {room.pendingAppointment && (
+        <PendingApptBar
+          pending={room.pendingAppointment}
+          currentUserId={currentUserId}
+          totalCapacity={room.capacity}
+          onAccept={handleAcceptPending}
+        />
+      )}
 
       <div className="chat-input-bar">
         <button className="btn-plus" onClick={() => setShowPlus(p => !p)}>+</button>

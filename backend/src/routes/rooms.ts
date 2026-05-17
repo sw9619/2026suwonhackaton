@@ -335,14 +335,24 @@ router.put('/:id/appointment/pending/accept', async (req: AuthRequest, res: Resp
     const io = getIo()
 
     if (isFullyAccepted) {
+      // 약속을 즉시 confirmed 상태로 설정
       await db.run(`
-        INSERT INTO appointments (room_id, place, datetime_iso, lat, lng)
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT (room_id) DO UPDATE SET place = EXCLUDED.place, datetime_iso = EXCLUDED.datetime_iso, lat = EXCLUDED.lat, lng = EXCLUDED.lng, accepted = 0, verified = 0
+        INSERT INTO appointments (room_id, place, datetime_iso, lat, lng, accepted)
+        VALUES (?, ?, ?, ?, ?, 1)
+        ON CONFLICT (room_id) DO UPDATE SET place = EXCLUDED.place, datetime_iso = EXCLUDED.datetime_iso, lat = EXCLUDED.lat, lng = EXCLUDED.lng, accepted = 1, verified = 0
       `, roomId, pending.place, pending.datetime_iso, pending.lat ?? null, pending.lng ?? null)
 
+      // 기존 수락/인증 초기화
       await db.run('DELETE FROM appointment_accepts WHERE room_id = ?', roomId)
       await db.run('DELETE FROM appointment_verifies WHERE room_id = ?', roomId)
+
+      // 모든 멤버를 수락 처리
+      const members = await db.all<{ user_id: number }>('SELECT user_id FROM room_members WHERE room_id = ?', roomId)
+      const allMemberIds = members.map(m => m.user_id)
+      for (const memberId of allMemberIds) {
+        await db.run('INSERT OR IGNORE INTO appointment_accepts (room_id, user_id) VALUES (?, ?)', roomId, memberId)
+      }
+
       await db.run('DELETE FROM pending_appointments WHERE room_id = ?', roomId)
       await db.run('DELETE FROM pending_appointment_accepts WHERE room_id = ?', roomId)
 
@@ -353,7 +363,7 @@ router.put('/:id/appointment/pending/accept', async (req: AuthRequest, res: Resp
 
       io.to(`room:${roomId}`).emit('appointment-updated', {
         roomId, place: pending.place, datetimeISO: pending.datetime_iso,
-        lat: pending.lat, lng: pending.lng, acceptedBy: [], accepted: false, verified: false, verifiedBy: [],
+        lat: pending.lat, lng: pending.lng, acceptedBy: allMemberIds, accepted: true, verified: false, verifiedBy: [],
         clearPending: true,
       })
     } else {
