@@ -68,11 +68,21 @@ router.delete('/me', async (req: AuthRequest, res: Response) => {
 
   const hostedRooms = await db.all<{ id: number }>('SELECT id FROM rooms WHERE host_id = ?', uid)
   for (const room of hostedRooms) {
+    await db.run('DELETE FROM pending_appointment_accepts WHERE room_id = ?', room.id)
+    await db.run('DELETE FROM pending_appointments WHERE room_id = ?', room.id)
+    await db.run('DELETE FROM appointment_accepts WHERE room_id = ?', room.id)
+    await db.run('DELETE FROM appointment_verifies WHERE room_id = ?', room.id)
     await db.run('DELETE FROM likes WHERE room_id = ?', room.id)
     await db.run('DELETE FROM ratings WHERE room_id = ?', room.id)
     await db.run('DELETE FROM appointments WHERE room_id = ?', room.id)
     await db.run('DELETE FROM messages WHERE room_id = ?', room.id)
     await db.run('DELETE FROM room_members WHERE room_id = ?', room.id)
+  }
+  const memberRooms = await db.all<{ room_id: number }>('SELECT room_id FROM room_members WHERE user_id = ?', uid)
+  for (const r of memberRooms) {
+    await db.run('DELETE FROM pending_appointment_accepts WHERE room_id = ? AND user_id = ?', r.room_id, uid)
+    await db.run('DELETE FROM appointment_accepts WHERE room_id = ? AND user_id = ?', r.room_id, uid)
+    await db.run('DELETE FROM appointment_verifies WHERE room_id = ? AND user_id = ?', r.room_id, uid)
   }
   await db.run('DELETE FROM rooms WHERE host_id = ?', uid)
   await db.run('DELETE FROM room_members WHERE user_id = ?', uid)
